@@ -46,7 +46,7 @@ def bot():
         acao_bolinha.perform()
         acao_bolinha.click()
         acao_bolinha.perform()
-        
+        time.sleep(1)
         
         #Pegar o contato do cliente
         telefone_cliente = driver.find_element(By.XPATH,contato_cliente)
@@ -56,16 +56,17 @@ def bot():
         
         #Pegar msg do cliente
         
-        todas_as_msg = driver.find_element(By.CLASS_NAME,msg_cliente)
+        todas_as_msg = driver.find_elements(By.CLASS_NAME,msg_cliente)
         todas_as_msg_texto = [e.text for e in todas_as_msg]
         msg = todas_as_msg_texto[-1]
         print(msg)
-        time.sleep(10)        
+        time.sleep(10)  
+        
         
         #Respondendo Cliente
         campo_de_texto = driver.find_element(By.XPATH,caixa_msg)
         campo_de_texto.click()
-        time.sleep(1)
+        time.sleep(5)
         campo_de_texto.send_keys('Olá aqui é seu assistente virtual',Keys.ENTER)
         
         #Fechar Contato
@@ -74,7 +75,7 @@ def bot():
     except:
         print('Aguardando novas msg')
         
-        #entao vou tentar isso aqui 
+        
 
 
 

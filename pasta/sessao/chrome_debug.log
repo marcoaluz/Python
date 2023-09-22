@@ -1,7 +1,9 @@
-[13352:15796:0921/215227.145:WARNING:chrome_main_delegate.cc(609)] This is Chrome version 117.0.5938.92 (not a warning)
-[13352:15796:0921/215227.263:INFO:policy_logger.cc(142)] :components\enterprise\browser\controller\chrome_browser_cloud_management_controller.cc(168) Starting CBCM Controller Initialization
-[13352:15796:0921/215227.263:INFO:policy_logger.cc(142)] :components\enterprise\browser\controller\chrome_browser_cloud_management_controller.cc(196) No machine level policy manager exists.
-[13352:15796:0921/215228.884:INFO:CONSOLE(0)] "Error with Permissions-Policy header: Unrecognized feature: 'ambient-light-sensor'.", source:  (0)
-[13352:564:0921/215352.301:WARNING:page_discarding_helper.cc(126)] Discarding multiple pages with target (kb): 0
-[13352:12280:0921/215452.309:WARNING:page_discarding_helper.cc(126)] Discarding multiple pages with target (kb): 0
-[13352:564:0921/215457.310:WARNING:page_discarding_helper.cc(126)] Discarding multiple pages with target (kb): 0
+[9416:10532:0921/221633.701:WARNING:chrome_main_delegate.cc(609)] This is Chrome version 117.0.5938.92 (not a warning)
+[9416:10532:0921/221633.869:INFO:policy_logger.cc(142)] :components\enterprise\browser\controller\chrome_browser_cloud_management_controller.cc(168) Starting CBCM Controller Initialization
+[9416:10532:0921/221633.870:INFO:policy_logger.cc(142)] :components\enterprise\browser\controller\chrome_browser_cloud_management_controller.cc(196) No machine level policy manager exists.
+[9416:10532:0921/221635.536:INFO:CONSOLE(0)] "Error with Permissions-Policy header: Unrecognized feature: 'ambient-light-sensor'.", source:  (0)
+[9416:5448:0921/221653.877:WARNING:page_discarding_helper.cc(126)] Discarding multiple pages with target (kb): 0
+[9416:8200:0921/221658.878:WARNING:page_discarding_helper.cc(126)] Discarding multiple pages with target (kb): 0
+[9416:8200:0921/221703.886:WARNING:page_discarding_helper.cc(126)] Discarding multiple pages with target (kb): 0
+[9416:8200:0921/221708.886:WARNING:page_discarding_helper.cc(126)] Discarding multiple pages with target (kb): 0
+[9416:5448:0921/221713.898:WARNING:page_discarding_helper.cc(126)] Discarding multiple pages with target (kb): 0
