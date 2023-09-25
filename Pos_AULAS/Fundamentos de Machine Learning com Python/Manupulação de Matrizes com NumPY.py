@@ -103,19 +103,66 @@ print(a)
 
 # Indexação
 
-arrays = np.arange(10*8).reshape([10,8])
+array = np.arange(10*8).reshape([10,8])
 
-print(arrays)
+print(array)
 
 #partiçõe e corte do array do inicio ate 5 linha
-arrays = arrays[:5]
-
+arrays = array[:5]
 print(arrays)
 
 #partiçõe e corte do array do inicia na 5 linha e vai ate final
-arrays = arrays[5:]
+
+arrays = array[5:]
 print(arrays)
+
 #partiçõe e corte do array apenas a primeira coluna
 
-arrays = arrays[:,0]
+arrays = array[:,0]
 print(arrays)
+
+#partiçõe e corte do array apenas todas colunas conforme necessidade no array
+
+arrays = array[3:7,:3]
+print(arrays)
+
+arrays = array[3:7,3:]
+print(arrays)
+
+arrays = array[3:7,3:6]
+print(arrays)
+
+#Elemento de uma Matriz
+
+arrays = array[1]
+print(arrays)
+
+#Manipulação Matricial
+
+MAN = np.random.random([10*10])
+
+print(MAN.shape)
+print(MAN.max())
+print(MAN.min())
+
+MAN = MAN*100
+
+print(MAN)
+
+MAN = MAN.astype(np.int16)
+
+print(MAN)
+print(MAN.std())
+print(MAN.shape)
+print(MAN.max())
+print(MAN.min())
+
+MAN = MAN >48
+print(MAN)
+
+#Pegar o valor do array e não condição verdadeiro ou falso
+array = MAN[MAN > 48]
+print(array)
+
+array = MAN[MAN<48] = 0
+print(MAN)
