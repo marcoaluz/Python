@@ -106,3 +106,8 @@ print(alunos_df.to_csv('Alunos.csv', index= False, header=True))
 
 
 
+#Importar um arquivo CSV
+data_df = pd.read_csv('C:/Python/Pos_AULAS/Fundamentos de Machine Learning com Python/bank-full-aula.csv', delimiter=';')
+
+
+print(data_df)
