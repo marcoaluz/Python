@@ -17,7 +17,7 @@ print(alunos_df)
 
 print(alunos_df[['nome', 'idade']])
 
-
+#Teste
 
 # Series são colunas do DataFrame
 
