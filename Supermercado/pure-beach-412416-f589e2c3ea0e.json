@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "pure-beach-412416",
+  "private_key_id": "f589e2c3ea0edaedca1b1619e1a2a601f7d6bc5c",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDOrWeRVlNqHoBS\niQhHeK4jahjpzgFYb4gmJGgXhE0wzu9MwpqyxihzqR0JhNfHCyBOu5o981MUbBxc\nLeDsQnWW/ePIIe4laGwGRL+jGCIz+f+Y94zxCWRNn9yvd96Kl/dXb7lOcCorqhHS\nbyj1Cy1sRshIUuRnW5/uTOlfmZJrij4tGn29dD/OmubVZuChtErg3HLKEjCSWhUX\n98ugj+eWmGsXQNQdRKv2dTN1z8UXv0VZiZToLxu40b/FURueO7sJ6wek8e/8m+m5\nYdNXI9aiAncbkiX1Fckqt8XPqpNU+sJlqhPJMlaZ0WO2JFbh+FymevGFOsKF6tjw\nQB7tTi5pAgMBAAECggEAAwVp5Cf85Co5+fri0hijgwUEBDbsshw/Qz94/g8DCdmc\nieS2WjKnWLl6IS997/zrpfr8EDfEWSITcA2DojB+g4yGjeBhGM7j9Vt/6aRqq5PV\n9qh3uPZILxJNKYt5B1GdXfvWG51sIGNGC2twj9Rv/4sxVk1P5WrjdZpONwWJrGS8\nM62oshAntG2O1FavwvEu7thnkryq/wPCfmIaL3BsdSw/CcwjHDOJO6m2XJx4Pby/\nBa+fkpuSCeMnIcH1MCFszc+QGu3SO6Wfl2QR64Q73QRoZcp759h8wnoADv4w6Bst\n+fz3Q7NMD8oCgC1cvxTs1llyfMnrarKbA35FcqVWeQKBgQDzRja11b0X0IfP9xIz\nCcDOve8u7halq3J7Mxdhj8KcP7ZLUrrEkPRr5Uk0xpfiGZcpjW4kGU7QJX9KrSH4\ncIAYLsjsnxOpmsk3QDFtSc0XlgYt7LzPzGWgmE3hWsO6q7fyxo53TgAY2QXS3hgM\nH/W9x2Z0iTh/F6+PUbobTVY5AwKBgQDZfRtDb8Wl91LjDgafQ0GMKYRm0+bFPdFJ\nJ4Xw3ma1RIYkkOcWZ8xkn53TTsuzXymCS6re16gBbqlMxITuPqvjMZ2V0HF4wyF2\n4PZT/cx9go9qQ/nCkEQJ2dOR4u5a/JyTc5Da1V4hIx1COvUQYm6ZuIYaDHfJaWpl\nYlJ0rrkhIwKBgFPUExAvebxWECaadbv+lWDoVB4wzr8ByC4p2dm1hxL+ZVupQ1Bu\nvrrbRJGaCUZRGSSpZpWr3tucwDNEW5tXcNxkaroWyti7zLBsP1vwfWquOKzkkd9t\nCGwBb3zDIQUXHQjcYMU9rIzjY71Y6KJs9OoTZvurOTuaNtXFDMNRr+9vAoGBAId7\n0hIOfPfIvI/JWwK3qQuhiWNtOeNBgTCrOFs2kJD3YQFCa1Kf0soUTQMnoOnarEcI\n0CcF/Rj3UOwLuCuaSwW7EMoVEbsDA8PEnG7yOgMt5B10vxAfQuNIGO5WidmQaBHK\n+j/4jyzhbQanJ6bPSsrkElYD0lNcIfWKbIdXmOg1AoGBAOjOcmK++zuZq9+kSHre\nMTy3rgBiD7c4zgYZoYL+eITXGUwelSCjizKRPN6Fxvh/OSlAAzpK0SsVPqTdJbkb\nEJv3BG4MV6xBjID5l/1b9HgNwTyz9XMhK+r4hGL3WEyO3ldCuisDPaGX+0ckBUP9\nBardDDrsSvuM8zTHeiufOYsd\n-----END PRIVATE KEY-----\n",
+  "client_email": "googleia@pure-beach-412416.iam.gserviceaccount.com",
+  "client_id": "111379240165417689032",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/googleia%40pure-beach-412416.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
