@@ -19,9 +19,11 @@ def supabase_request(method, endpoint, data=None):
     url = f'{SUPABASE_URL}/rest/v1/{endpoint}'
     params = {'apikey': SUPABASE_API_KEY}  # Include API key as query parameter
     headers = {
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
     }
 
+    print(f"Paramentros Params: {params}")
     print(f"Request URL: {url}")
     print(f"Request Headers: {headers}")
 
@@ -29,10 +31,12 @@ def supabase_request(method, endpoint, data=None):
 
     # Check response status code
     if response.status_code == 200:
-        print(response.json())  # Assuming you want the JSON data
+        print(response.json())  # Exibe o JSON de retorno
+        return response.json()  # Retorna o JSON para ser utilizado
     else:
-        print(f"Error: {response.status_code} - {response.text}")  # Print error message
-
+        print(f"Error: {response.status_code} - {response.text}")  # Imprime a mensagem de erro
+        return None  # Retorna None em caso de erro
+    
 # Redireciona a rota raiz para a tela de login
 @app.route('/')
 def index():
@@ -47,16 +51,18 @@ def login():
         # Buscar o usuário pelo nome de usuário
         try:
             user = supabase_request('GET', f'{SUPABASE_USERS_TABLE}?email=eq.{username}')
-            if user:
+            print(f"verificar retorno user: {user}" )
+            if user and len(user) > 0:
                 # Verificar a senha com o hash armazenado
                 stored_password = user[0]['senha']
+               
                 if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
-                    flash('Login realizado com sucesso!', 'success')
-                    return redirect(url_for('login'))  # Redirecionar para a página principal
+                       flash('Login realizado com sucesso!', 'success')
+                       return render_template('index.html')  # Renderiza diretamente com o flash
                 else:
-                    flash('Senha incorreta!', 'danger')
+                       flash('Senha incorreta!', 'danger')                                      
             else:
-                flash('Usuário não encontrado!', 'danger')
+                flash('Usuário não encontrado!', 'danger')      
         except requests.HTTPError as e:
             flash(f'Erro ao buscar o usuário: {e}', 'danger')
             
@@ -91,7 +97,7 @@ def register():
         try:
             existing_user = supabase_request('GET', f'{SUPABASE_USERS_TABLE}?email=eq.{email}')
             if existing_user:
-                flash('E-mail já registrado. Use outro e-mail.', 'danger' ,[email])
+                flash('E-mail já registrado. Use outro e-mail.', 'danger')
                 return redirect(url_for('register'))
         except requests.HTTPError as e:
             flash(f'Erro ao verificar o e-mail: {e}', 'danger')
