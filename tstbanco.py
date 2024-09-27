@@ -1,3 +1,9 @@
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+from flask_mail import Mail, Message
+
 from flask import Flask, render_template, request, redirect, url_for, flash
 from datetime import datetime
 from supabase import create_client
@@ -11,7 +17,7 @@ app = Flask(__name__)
 SUPABASE_URL = 'https://zsiayxkxryslphpnwmmt.supabase.co'
 SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzaWF5eGt4cnlzbHBocG53bW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjY3MDAzNDIsImV4cCI6MjA0MjI3NjM0Mn0.h9rhuu5LrJ1X6qVFAsnQu3WhD8Lqs50txKzVzZnKp6s'
 SUPABASE_USERS_TABLE = 'usuarios'
-#supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
+supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 app.secret_key = 'supersecretkey'
 
 # Função para realizar chamadas à API Supabase
@@ -25,7 +31,7 @@ def supabase_request(method, endpoint, data=None):
     print(f"Request URL: {url}")
     print(f"Request Headers: {headers}")
 
-    response = requests.request(method, url, headers=headers, params=params, data=json.dumps(data))
+    response = requests.request(method, url, headers=headers, params=params, data=json.dumps(data) if data else None)
 
     # Check response status code
     if response.status_code == 200:
@@ -33,130 +39,75 @@ def supabase_request(method, endpoint, data=None):
     else:
         print(f"Error: {response.status_code} - {response.text}")  # Print error message
 
-# Redireciona a rota raiz para a tela de login
-@app.route('/')
-def index():
-    return redirect(url_for('login'))
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        
-        # Buscar o usuário pelo nome de usuário
-        try:
-            user = supabase_request('GET', f'{SUPABASE_USERS_TABLE}?email=eq.{username}')
-           
-            if user and len(user) > 0:
-                # Verificar a senha com o hash armazenado
-                stored_password = user[0]['senha']
-                try:
-                    if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
-                       flash('Login realizado com sucesso!', 'success')
-                       return render_template('login.html')  # Renderiza diretamente com o flash
-                    else:
-                       flash('Senha incorreta!', 'danger')
-                       return render_template('login.html')  # Renderiza diretamente com o flash
-                except ValueError:
-                    # Se o hash da senha não for válido (exemplo: senha em texto puro)
-                    flash('Erro de autenticação. Entre em contato com o Admin.', 'danger')
-                    return redirect(url_for('login'))     
-            if not user:
-                flash('Usuário não encontrado!', 'danger')
-        except requests.HTTPError as e:
-            flash(f'Erro ao buscar o usuário: {e}', 'danger')
-            
-        return redirect(url_for('login'))
-    
-    return render_template('login.html')
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'seuemail@gmail.com'
+app.config['MAIL_PASSWORD'] = 'suasenha'
+app.config['MAIL_DEFAULT_SENDER'] = 'seuemail@gmail.com'
+
+mail = Mail(app)
+
+def send_email(to_email, subject, body):
+    msg = Message(subject, recipients=[to_email])
+    msg.body = body
+    mail.send(msg)
+
+
+
+
+def send_email(to_email, subject, body):
+    # Configurações do servidor de e-mail (Gmail, por exemplo)
+    smtp_server = 'smtp.gmail.com'
+    smtp_port = 587
+    from_email = 'seuemail@gmail.com'  # Seu e-mail
+    from_password = 'suasenha'         # Sua senha de e-mail
+
+    # Configurando o conteúdo do e-mail
+    msg = MIMEMultipart()
+    msg['From'] = from_email
+    msg['To'] = to_email
+    msg['Subject'] = subject
+
+    # Corpo do e-mail
+    msg.attach(MIMEText(body, 'plain'))
+
+    # Enviando o e-mail
+    try:
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()  # Segurança (TLS)
+        server.login(from_email, from_password)
+        text = msg.as_string()
+        server.sendmail(from_email, to_email, text)
+        server.quit()
+        print("E-mail enviado com sucesso!")
+    except Exception as e:
+        print(f"Falha ao enviar o e-mail: {e}")
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
         email = request.form['email']
-        # Lógica de envio de e-mail aqui
-        flash('E-mail de recuperação enviado!', 'info')
-        return redirect(url_for('login'))
-    return render_template('forgot_password.html')
 
-# Rota para registrar um usuário
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        name = request.form['name']
-        email = request.form['email']
-        phone = request.form['phone']
-        password = request.form['password']
-        confirm_password = request.form['confirm_password']
-
-        if password != confirm_password:
-            flash('As senhas não correspondem. Tente novamente.', 'danger')
-            return redirect(url_for('register'))
-
-        # Verificar se o usuário já existe no banco de dados
-        try:
-            existing_user = supabase_request('GET', f'{SUPABASE_USERS_TABLE}?email=eq.{email}')
-            if existing_user:
-                flash('E-mail já registrado. Use outro e-mail.', 'danger' ,[email])
-                return redirect(url_for('register'))
-        except requests.HTTPError as e:
-            flash(f'Erro ao verificar o e-mail: {e}', 'danger')
-            return redirect(url_for('register'))
-
-        # Verificar se o nome de usuário já existe
-        try:
-            existing_user_by_name = supabase_request('GET', f'{SUPABASE_USERS_TABLE}?nome_usuario=eq.{name}')
-            if existing_user_by_name:
-                flash('Nome de usuário já registrado. Use outro nome.', 'danger')
-                return redirect(url_for('register'))
-        except requests.HTTPError as e:
-            flash(f'Erro ao verificar o nome de usuário: {e}', 'danger')
-            return redirect(url_for('register'))
-
-        # Hashear a senha antes de salvar
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-        # Criar um novo usuário
-        new_user = {
-            'nome_usuario': name,
-            'email': email,
-            'phone': phone,
-            'senha': hashed_password,  # Armazenar o hash da senha
-            'data_criacao': datetime.now().isoformat()
-        }
-        try:
-            supabase_request('POST', SUPABASE_USERS_TABLE, new_user)
-            flash('Registro realizado com sucesso! Verifique seu e-mail para confirmar.', 'success')
-            return redirect(url_for('login'))
-        except requests.HTTPError as e:
-            flash(f'Erro ao criar o usuário: {e}', 'danger')
-            return redirect(url_for('register'))
-
-    return render_template('register.html')
-
-# Rota para confirmar o e-mail
-@app.route('/confirm_email/<token>')
-def confirm_email(token):
-    try:
-        # Exemplo estático; substitua pela lógica real
-        email = "user@example.com"  # Deveria obter do token
-        existing_user = supabase_request('GET', f'{SUPABASE_USERS_TABLE}?email=eq.{email}')
+        # Verifica se o e-mail está cadastrado
+        user = supabase_request('GET', f'{SUPABASE_USERS_TABLE}?email=eq.{email}')
         
-        if existing_user and not existing_user[0]['is_confirmed']:
-            user_id = existing_user[0]['id']
-            updated_data = {
-                'is_confirmed': True,
-                'data_criacao': 'now()'  # PostgreSQL SQL para definir o timestamp atual
-            }
-            supabase_request('PATCH', f'{SUPABASE_USERS_TABLE}?id=eq.{user_id}', updated_data)
-            flash('E-mail confirmado com sucesso! Registro finalizado.', 'success')
+        if user and len(user) > 0:
+            # Gerar token de redefinição de senha (pode ser um UUID, por exemplo)
+            reset_token = str(uuid.uuid4())
+            session['reset_token'] = reset_token
+            session['email'] = email
+
+            # Enviar o e-mail de redefinição de senha
+            reset_link = url_for('reset_password', token=reset_token, _external=True)
+            send_email(email, 'Redefinir senha', f'Clique no link para redefinir sua senha: {reset_link}')
+            
+            flash('E-mail de recuperação enviado!', 'info')
         else:
-            flash('Token inválido ou e-mail já confirmado.', 'danger')
-    except requests.HTTPError as e:
-        flash(f'Erro ao confirmar o e-mail: {e}', 'danger')
+            flash('E-mail não cadastrado!', 'danger')
 
-    return redirect(url_for('login'))
-
-if __name__ == '__main__':
-    app.run(debug=True)
+        return redirect(url_for('login'))
+    
+    return render_template('forgot_password.html')
