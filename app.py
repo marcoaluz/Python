@@ -7,6 +7,7 @@ import bcrypt  # Para hashear as senhas
 import uuid
 import jwt 
 import smtplib
+import socket
 from flask_mail import Mail, Message
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -84,7 +85,16 @@ def login():
                 flash('Usuário não encontrado!', 'danger')      
         except requests.HTTPError as e:
             flash(f'Erro ao buscar o usuário: {e}', 'danger')
-            
+
+        except socket.timeout as e:
+             flash('Erro de timeout: O servidor demorou muito para responder. Tente novamente mais tarde.', 'danger')
+    
+    # Tratamento para outros erros de conexão
+        except requests.exceptions.RequestException as e:
+            flash(f'Erro de conexão: {e}', 'danger')
+    
+        except Exception as e:
+             flash(f'Erro inesperado: {e}', 'danger')    
         return redirect(url_for('login'))
     
     return render_template('login.html')
@@ -113,23 +123,37 @@ def forgot_password():
     if request.method == 'POST':
         email = request.form['email'].lower()
 
+
+        try:
+
         # Verifica se o e-mail está cadastrado
-        user = supabase_request('GET', f'{SUPABASE_USERS_TABLE}?email=eq.{email}')
+                user = supabase_request('GET', f'{SUPABASE_USERS_TABLE}?email=eq.{email}')
         
-        if user and len(user) > 0:
+                if user and len(user) > 0:
             # Gerar token de redefinição de senha (pode ser um UUID, por exemplo)
-            reset_token = str(uuid.uuid4())
-            session['reset_token'] = reset_token
-            session['email'] = email
+                    reset_token = str(uuid.uuid4())
+                    session['reset_token'] = reset_token
+                    session['email'] = email
 
             # Enviar o e-mail de redefinição de senha
-            reset_link = url_for('reset_password', token=reset_token, _external=True)
-            send_email(email, 'Redefinir senha', f'Clique no link para redefinir sua senha: {reset_link}')
+                    reset_link = url_for('reset_password', token=reset_token, _external=True)
+                    send_email(email, 'Redefinir senha', f'Clique no link para redefinir sua senha: {reset_link}')
             
-            flash('E-mail de recuperação enviado!', 'info')
-        else:
-            flash('E-mail não cadastrado!', 'danger')
+                    flash('E-mail de recuperação enviado!', 'info')
+                else:
+                    flash('E-mail não cadastrado!', 'danger')   
+        # Tratamento para timeout ou falhas de conexão com o Supabase
+        except socket.timeout as e:
+            flash('Erro de timeout: O servidor demorou muito para responder. Tente novamente mais tarde.', 'danger')
+        
+        except requests.exceptions.RequestException as e:
+            flash(f'Erro de conexão com o servidor: {e}', 'danger')
 
+        # Tratamento para falhas no envio de e-mail
+        except Exception as e:
+            flash(f'Ocorreu um erro ao processar a solicitação: {e}', 'danger')
+    
+        
         return redirect(url_for('login'))
     
     return render_template('forgot_password.html')
@@ -176,6 +200,7 @@ def reset_password(token):
                 return redirect(url_for('reset_password', token=token))
         except Exception as e:
             flash(f'Erro ao redefinir a senha: {e}', 'danger')
+            
         return redirect(url_for('reset_password', token=token))
 
 
