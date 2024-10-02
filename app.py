@@ -1,16 +1,15 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
-from datetime import datetime
+from flask import Flask, render_template, request, redirect, url_for, flash, session,current_app
+from datetime import datetime, timedelta
 from supabase import create_client
 import requests
 import json
 import bcrypt  # Para hashear as senhas
 import uuid
+import jwt 
 import smtplib
 from flask_mail import Mail, Message
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-
-
 
 
 app = Flask(__name__)
@@ -21,6 +20,16 @@ SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 SUPABASE_USERS_TABLE = 'usuarios'
 supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 app.secret_key = 'supersecretkey'
+SECRET_KEY = 'ziU5pXB8iB6StifZfBNgFON2VlXQUOEyrrzBNYilQGp0AUIQSRmK8tTLpR0Y7SLdempJ2xlbiGDZDWzrLIatLg=='
+
+
+def create_token(email):
+    token = jwt.encode({
+        'email': email,
+        'exp': datetime.utcnow() + timedelta(hours=1)  # O token expira em 1 hora
+    }, SECRET_KEY, algorithm='HS256')
+    return token
+
 
 # Função para realizar chamadas à API Supabase
 def supabase_request(method, endpoint, data=None):
@@ -61,9 +70,11 @@ def login():
             user = supabase_request('GET', f'{SUPABASE_USERS_TABLE}?email=eq.{username}')
             print(f"verificar retorno user: {user}" )
             if user and len(user) > 0:
+                if not user[0].get('is_confirmed', False):  # Verifica se 'is_confirmed' é False
+                    flash('Você deve confirmar seu e-mail para finalizar o registro.', 'warning')
+                    return redirect(url_for('login'))
                 # Verificar a senha com o hash armazenado
                 stored_password = user[0]['senha']
-               
                 if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
                        flash('Login realizado com sucesso!', 'success')
                        return render_template('index.html')  # Renderiza diretamente com o flash
@@ -77,7 +88,6 @@ def login():
         return redirect(url_for('login'))
     
     return render_template('login.html')
-
 
 
 e_mail_rec = 'marco.luz1994@gmail.com'
@@ -141,30 +151,24 @@ def reset_password(token):
 
         # Hash da nova senha
         hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
-
+        senha = hashed_password.decode('utf-8')
         # Atualiza a senha no banco de dados
         email = session.get('email')
-        print(f"Email: {email}")
+        #print(f"Email utilizado para a atualização: {email}")#
 
         # Verificar se o usuário existe
         user_check = supabase.table(SUPABASE_USERS_TABLE).select('*').eq('email', email).execute()
-        print(user_check)
+        #print(f"Resultado da verificação do usuário: {user_check.data}")#
+
         if not user_check.data:
             flash('Usuário não encontrado!', 'danger')
             return redirect(url_for('reset_password', token=token))
-
         try:
-            senha = hashed_password.decode('utf-8') 
-            response = supabase.table(SUPABASE_USERS_TABLE).update({'senha': senha}).match({'email': email}).execute()
-
-#            response = supabase.table(SUPABASE_USERS_TABLE).update({'senha': senha}).eq('email', email).execute()
-
-            # Debug da resposta
-            print(f"Response data: {response.data}")
-            print(f"Response count: {response.count}")
-
+            
+            response = supabase.table(SUPABASE_USERS_TABLE).update({'senha': senha}).eq('email', email).execute()
+            #print(f"Verificar resp: {response}")  # Exibe a resposta completa
             # Verifica se a atualização foi bem-sucedida
-            if response.count is not None and response.count > 0:  # Verifica se count não é None
+            if response.data:
                 flash('Senha redefinida com sucesso!', 'success')
                 return redirect(url_for('login'))
             else:
@@ -172,26 +176,10 @@ def reset_password(token):
                 return redirect(url_for('reset_password', token=token))
         except Exception as e:
             flash(f'Erro ao redefinir a senha: {e}', 'danger')
-            return redirect(url_for('reset_password', token=token))
+        return redirect(url_for('reset_password', token=token))
+
 
     return render_template('reset_password.html', token=token)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # Rota para registrar um usuário
 @app.route('/register', methods=['GET', 'POST'])
@@ -240,6 +228,14 @@ def register():
         }
         try:
             supabase_request('POST', SUPABASE_USERS_TABLE, new_user)
+
+            # Gerar o token de confirmação
+            confirmation_token = create_token(email)
+
+            # Enviar o e-mail de confirmação
+            confirmation_link = url_for('confirm_email', token=confirmation_token, _external=True)
+            send_email(email, 'Confirmação de E-mail', f'Clique no link para confirmar seu e-mail: {confirmation_link}')
+
             flash('Registro realizado com sucesso! Verifique seu e-mail para confirmar.', 'success')
             return redirect(url_for('login'))
         except requests.HTTPError as e:
@@ -247,40 +243,61 @@ def register():
             return redirect(url_for('register'))
 
     return render_template('register.html')
-
-
-
-
-
-
-
-
-
-
-
-
 # Rota para confirmar o e-mail
 @app.route('/confirm_email/<token>')
 def confirm_email(token):
     try:
-        # Exemplo estático; substitua pela lógica real
-        email = "user@example.com"  # Deveria obter do token
-        existing_user = supabase_request('GET', f'{SUPABASE_USERS_TABLE}?email=eq.{email}')
+        # Decodificando o token para obter o e-mail
+        email = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])['email']
         
-        if existing_user and not existing_user[0]['is_confirmed']:
-            user_id = existing_user[0]['id']
-            updated_data = {
-                'is_confirmed': True,
-                'data_criacao': 'now()'  # PostgreSQL SQL para definir o timestamp atual
-            }
-            supabase_request('PATCH', f'{SUPABASE_USERS_TABLE}?id=eq.{user_id}', updated_data)
-            flash('E-mail confirmado com sucesso! Registro finalizado.', 'success')
+        # Verificando se o e-mail existe na tabela de usuários
+        existing_user_response = supabase.table(SUPABASE_USERS_TABLE).select('*').eq('email', email).execute()
+
+        print("Resposta da consulta:", existing_user_response.data)  # Mensagem de depuração
+        
+        if existing_user_response.data:
+            user = existing_user_response.data[0]
+            if 'is_confirmed' not in user:
+                print("A coluna 'is_confirmed' não existe no usuário:", user)
+                flash('Erro: A coluna is_confirmed não existe.', 'danger')
+                return redirect(url_for('login'))
+
+            if not user['is_confirmed']:
+                user_id = user['id']
+                updated_data = {
+                    'is_confirmed': True,
+                    'data_criacao': datetime.now().isoformat()  # Atualiza a data de confirmação
+                }
+
+                # Atualizando o registro do usuário
+                update_response = supabase.table(SUPABASE_USERS_TABLE).update(updated_data).eq('id', user_id).execute()
+
+                # Verificando se a atualização foi bem-sucedida
+                if update_response.data:
+                    flash('E-mail confirmado com sucesso! Registro finalizado.', 'success')
+                else:
+                    flash('Erro ao confirmar o e-mail: não foi possível atualizar o registro.', 'danger')
+            else:
+                flash('O e-mail já foi confirmado anteriormente.', 'info')
         else:
-            flash('Token inválido ou e-mail já confirmado.', 'danger')
-    except requests.HTTPError as e:
+            flash('Token inválido ou e-mail não encontrado.', 'danger')
+    except Exception as e:
         flash(f'Erro ao confirmar o e-mail: {e}', 'danger')
 
     return redirect(url_for('login'))
 
+
+def send_email(to, subject, body):
+    """Envia um e-mail usando SMTP."""
+    msg = MIMEText(body)
+    msg['Subject'] = subject
+    msg['From'] = e_mail_rec
+    msg['To'] = to
+
+    with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        server.starttls()
+        server.login(e_mail_rec, senha_rec)
+        server.send_message(msg)
+
 if __name__ == '__main__':
-    app.run(debug=True)
+   app.run(debug=True)
