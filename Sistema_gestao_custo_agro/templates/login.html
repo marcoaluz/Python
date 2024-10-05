@@ -7,7 +7,7 @@
     <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registrar</title>
+    <title>Login</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         body {
@@ -41,9 +41,7 @@
             color: #555;
         }
 
-        input[type="text"],
-        input[type="email"],
-        input[type="password"] {
+        input[type="text"], input[type="password"] {
             width: 100%;
             padding: 10px;
             border: 1px solid #ccc;
@@ -52,9 +50,7 @@
             font-size: 16px;
         }
 
-        input[type="text"]:focus,
-        input[type="email"]:focus,
-        input[type="password"]:focus {
+        input[type="text"]:focus, input[type="password"]:focus {
             border-color: #007bff;
             outline: none;
         }
@@ -75,14 +71,6 @@
             background-color: #0056b3;
         }
 
-        .flash-messages {
-            margin: 15px 0;
-            padding: 10px;
-            border-radius: 5px;
-            background-color: #ffeeba;
-            color: #856404;
-        }
-
         .links {
             text-align: center;
             margin-top: 15px;
@@ -96,48 +84,29 @@
         .links a:hover {
             text-decoration: underline;
         }
-    </style>
-    <script>
-        function formatPhone(input) {
-            // Remove all caracteres não numéricos
-            let value = input.value.replace(/\D/g, '');
-            // Formatação
-            if (value.length > 6) {
-                value = value.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1)$2-$3');
-            } else if (value.length > 2) {
-                value = value.replace(/^(\d{2})(\d{4,5})$/, '($1)$2-');
-            } else if (value.length > 0) {
-                value = value.replace(/^(\d{2})$/, '($1');
-            }
-            input.value = value;
+
+        .flash-messages {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #ffeeba;
+            color: #856404;
         }
-    </script>
+    </style>
 </head>
 <body>
     <div class="container">
-        <h2>Registrar</h2>
-        <form action="{{ url_for('register') }}" method="POST">
+        <h2>Login</h2>
+        <form action="{{ url_for('login.login') }}" method="POST">  
             <div class="form-group">
-                <label for="name">Nome:</label>
-                <input type="text" id="name" name="name" required>
-            </div>
-            <div class="form-group">
-                <label for="email">E-mail:</label>
-                <input type="email" id="email" name="email" required>
-            </div>
-            <div class="form-group">
-                <label for="phone">Telefone:</label>
-                <input type="text" id="phone" name="phone" placeholder="(xx)xxxxx-xxxx" oninput="formatPhone(this)" required>
+                <label for="username">Usuário:</label>
+                <input type="text" id="username" name="username" required>
             </div>
             <div class="form-group">
                 <label for="password">Senha:</label>
                 <input type="password" id="password" name="password" required>
             </div>
-            <div class="form-group">
-                <label for="confirm_password">Confirme a Senha:</label>
-                <input type="password" id="confirm_password" name="confirm_password" required>
-            </div>
-            <button type="submit">Registrar</button>
+            <button type="submit">Login</button>
         </form>
 
         <!-- Exibe as mensagens flash -->
@@ -150,9 +119,10 @@
                 </div>
             {% endif %}
         {% endwith %}
-        
+
         <div class="links">
-            <a href="{{ url_for('login') }}">Voltar ao Login</a>
+            <a href="{{ url_for('login.register') }}">Registrar</a> |
+            <a href="{{ url_for('login.forgot_password') }}">Esqueci minha senha</a>
         </div>
     </div>
 </body>
