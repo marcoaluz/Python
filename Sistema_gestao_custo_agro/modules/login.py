@@ -38,18 +38,18 @@ def supabase_request(method, endpoint, data=None):
         'Content-Type': 'application/json'
     }
 
-    print(f"Paramentros Params: {params}")
-    print(f"Request URL: {url}")
-    print(f"Request Headers: {headers}")
+    #print(f"Paramentros Params: {params}")
+    #print(f"Request URL: {url}")
+    #print(f"Request Headers: {headers}")
 
     response = requests.request(method, url, headers=headers, params=params, data=json.dumps(data))
 
     # Check response status code
     if response.status_code == 200:
-        print(response.json())  # Exibe o JSON de retorno
+     #   print(response.json())  # Exibe o JSON de retorno
         return response.json()  # Retorna o JSON para ser utilizado
     else:
-        print(f"Error: {response.status_code} - {response.text}")  # Imprime a mensagem de erro
+      #  print(f"Error: {response.status_code} - {response.text}")  # Imprime a mensagem de erro
         return None  # Retorna None em caso de erro
 
 
@@ -83,7 +83,7 @@ def login():
         # Buscar o usuário pelo nome de usuário
         try:
             user = supabase_request('GET', f'{SUPABASE_USERS_TABLE}?email=eq.{username}')
-            print(f"verificar retorno user: {user}" )
+       #     print(f"verificar retorno user: {user}" )
             if user and len(user) > 0:
                 if not user[0].get('is_confirmed', False):  # Verifica se 'is_confirmed' é False
                     flash('Você deve confirmar seu e-mail para finalizar o registro.', 'warning')
@@ -93,7 +93,7 @@ def login():
                 stored_password = user[0]['senha']
                 if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
                        flash('Login realizado com sucesso!', 'success')
-                       return render_template('cadastro_cliente.html')  # Renderiza diretamente com o flash
+                       return redirect(url_for('login.cadastro_cliente.html'))  # Renderiza diretamente com o flash
                 else:
                        flash('Senha incorreta!', 'danger')                                      
             else:
@@ -138,7 +138,8 @@ def forgot_password():
 
         return redirect(url_for('login.login'))  # Redireciona para a página de login
     
-    return current_app.send_static_file('forgot_password.html')
+    return render_template('forgot_password.html')
+    #return current_app.send_static_file('forgot_password.html')
 
 # Rota para redefinir a senha (com o token)
 @login_bp.route('/reset_password/<token>', methods=['GET', 'POST'])
@@ -266,7 +267,7 @@ def confirm_email(token):
         # Verificando se o e-mail existe na tabela de usuários
         existing_user_response = supabase.table(SUPABASE_USERS_TABLE).select('*').eq('email', email).execute()
 
-        print("Resposta da consulta:", existing_user_response.data)  # Mensagem de depuração
+        #print("Resposta da consulta:", existing_user_response.data)  # Mensagem de depuração
         
         if existing_user_response.data:
             user = existing_user_response.data[0]
