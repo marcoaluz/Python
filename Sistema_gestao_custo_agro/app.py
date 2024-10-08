@@ -2,6 +2,8 @@ from flask import Flask
 from flask_mail import Mail
 from config import SECRET_KEY
 
+
+
 app = Flask(__name__)
 
 # Configurações de e-mail
@@ -23,7 +25,14 @@ app.secret_key = SECRET_KEY
 
 # Registrar os módulos (blueprints) no final
 from modules.login import login_bp
+from modules.cadastro_cliente import cadastro_bp
+from modules.menu import menu_bp
+
+
 app.register_blueprint(login_bp)
+app.register_blueprint(cadastro_bp)
+app.register_blueprint(menu_bp)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

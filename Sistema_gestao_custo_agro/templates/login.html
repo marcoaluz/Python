@@ -8,22 +8,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <!-- Bootstrap para o Spinner -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    
     <style>
         body {
             font-family: 'Arial', sans-serif;
-            background-color: #f4f4f4;
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            height: 100vh;
+            background-image: url('{{ url_for('static', filename='agro_tec.jpg') }}');
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .container {
             max-width: 400px;
-            margin: auto;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.8); /* Fundo transparente */
+            border-radius: 15px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2), 0 10px 10px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            transform: translateY(0);
+            transition: transform 0.3s ease-out;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
         }
 
         h2 {
@@ -32,18 +52,16 @@
         }
 
         .form-group {
+            position: relative;
             margin-bottom: 15px;
         }
 
-        label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-        }
-
+        /* Estilos para os campos de entrada com ícones */
         input[type="text"], input[type="password"] {
             width: 100%;
             padding: 10px;
+            padding-left: 40px; /* Espaço para o ícone à esquerda */
+            padding-right: 40px; /* Espaço para o ícone à direita */
             border: 1px solid #ccc;
             border-radius: 5px;
             box-sizing: border-box;
@@ -53,6 +71,26 @@
         input[type="text"]:focus, input[type="password"]:focus {
             border-color: #007bff;
             outline: none;
+        }
+
+        .form-group i.fa-user, .form-group i.fa-lock {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #007bff;
+            font-size: 18px;
+        }
+
+        /* Ícone de mostrar/ocultar senha no lado direito */
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #007bff;
+            font-size: 18px;
         }
 
         button {
@@ -92,22 +130,37 @@
             background-color: #ffeeba;
             color: #856404;
         }
+
+        /* Estilização para o spinner */
+        #loading-spinner {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Login</h2>
-        <form action="{{ url_for('login.login') }}" method="POST">  
+        <form id="login-form" action="{{ url_for('login.login') }}" method="POST">  
             <div class="form-group">
-                <label for="username">Usuário:</label>
-                <input type="text" id="username" name="username" required>
+                <i class="fas fa-user"></i> <!-- Ícone de usuário -->
+                <input type="text" id="username" name="username" placeholder="Usuário" required>
             </div>
             <div class="form-group">
-                <label for="password">Senha:</label>
-                <input type="password" id="password" name="password" required>
+                <i class="fas fa-lock"></i> <!-- Ícone de senha -->
+                <input type="password" id="password" name="password" placeholder="Senha" required>
+                <i class="fas fa-eye-slash toggle-password" id="toggle-password"></i> <!-- Ícone de olho -->
             </div>
             <button type="submit">Login</button>
         </form>
+
+        <!-- Spinner de carregamento -->
+        <div id="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Carregando...</span>
+            </div>
+        </div>
 
         <!-- Exibe as mensagens flash -->
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -125,5 +178,35 @@
             <a href="{{ url_for('login.forgot_password') }}">Esqueci minha senha</a>
         </div>
     </div>
+
+    <!-- JavaScript para exibir o spinner e mostrar/ocultar senha -->
+    <script>
+        document.getElementById('login-form').addEventListener('submit', function() {
+            // Oculta o botão e exibe o spinner
+            document.querySelector('button[type="submit"]').style.display = 'none';
+            document.getElementById('loading-spinner').style.display = 'block';
+        });
+
+        // Mostrar/ocultar senha
+        document.getElementById('toggle-password').addEventListener('click', function() {
+            const passwordField = document.getElementById('password');
+            const icon = this;
+
+            // Alternar entre tipo "password" e "text"
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            } else {
+                passwordField.type = 'password';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            }
+        });
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

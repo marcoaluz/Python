@@ -10,34 +10,55 @@
     <title>Registrar</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
+    @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css');
+        
         body {
             font-family: 'Arial', sans-serif;
-            background-color: #f4f4f4;
             margin: 0;
-            padding: 20px;
-        }
+            padding: 0;
+            height: 100vh;
+            background-image: url('{{ url_for('static', filename='agro_tec.jpg') }}');
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            }
 
         .container {
             max-width: 400px;
-            margin: auto;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.8); /* Fundo transparente */
+            border-radius: 15px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2), 0 10px 10px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            transform: translateY(0);
+            transition: transform 0.3s ease-out;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
         }
 
         h2 {
             text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
             color: #333;
         }
 
         .form-group {
             margin-bottom: 15px;
+            position: relative;
         }
 
         label {
             display: block;
             margin-bottom: 5px;
+            font-weight: bold;
             color: #555;
         }
 
@@ -46,6 +67,7 @@
         input[type="password"] {
             width: 100%;
             padding: 10px;
+            padding-left: 40px;
             border: 1px solid #ccc;
             border-radius: 5px;
             box-sizing: border-box;
@@ -57,6 +79,14 @@
         input[type="password"]:focus {
             border-color: #007bff;
             outline: none;
+        }
+
+        .form-group i {
+            position: absolute;
+            left: 10px;
+            top: 36px;
+            color: #007bff;
+            font-size: 18px;
         }
 
         button {
@@ -99,9 +129,7 @@
     </style>
     <script>
         function formatPhone(input) {
-            // Remove all caracteres não numéricos
             let value = input.value.replace(/\D/g, '');
-            // Formatação
             if (value.length > 6) {
                 value = value.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1)$2-$3');
             } else if (value.length > 2) {
@@ -119,28 +147,32 @@
         <form action="{{ url_for('login.register') }}" method="POST">
             <div class="form-group">
                 <label for="name">Nome:</label>
+                <i class="fas fa-user"></i>
                 <input type="text" id="name" name="name" required>
             </div>
             <div class="form-group">
                 <label for="email">E-mail:</label>
+                <i class="fas fa-envelope"></i>
                 <input type="email" id="email" name="email" required>
             </div>
             <div class="form-group">
                 <label for="phone">Telefone:</label>
+                <i class="fas fa-phone"></i>
                 <input type="text" id="phone" name="phone" placeholder="(xx)xxxxx-xxxx" oninput="formatPhone(this)" required>
             </div>
             <div class="form-group">
                 <label for="password">Senha:</label>
+                <i class="fas fa-lock"></i>
                 <input type="password" id="password" name="password" required>
             </div>
             <div class="form-group">
                 <label for="confirm_password">Confirme a Senha:</label>
+                <i class="fas fa-lock"></i>
                 <input type="password" id="confirm_password" name="confirm_password" required>
             </div>
             <button type="submit">Registrar</button>
         </form>
 
-        <!-- Exibe as mensagens flash -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div class="flash-messages">

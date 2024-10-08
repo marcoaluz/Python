@@ -1,22 +1,36 @@
-from flask import Flask, render_template, request, redirect, flash
-from supabase import create_client, Client
-import csv
-import os
+from flask import Flask, render_template, request, redirect, url_for, flash, session, Blueprint
+from utils import login_required
 
-app = Flask(__name__)
+from supabase import create_client
+from config import SUPABASE_URL, SUPABASE_API_KEY
 
-SUPABASE_URL = 'https://zsiayxkxryslphpnwmmt.supabase.co'
-SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzaWF5eGt4cnlzbHBocG53bW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjY3MDAzNDIsImV4cCI6MjA0MjI3NjM0Mn0.h9rhuu5LrJ1X6qVFAsnQu3WhD8Lqs50txKzVzZnKp6s'
+cadastro_bp = Blueprint('cadastro_cliente', __name__)
+
 SUPABASE_USERS_TABLE = 'cadastro_cliente'
-app.secret_key = 'supersecretkey'
-SECRET_KEY = 'ziU5pXB8iB6StifZfBNgFON2VlXQUOEyrrzBNYilQGp0AUIQSRmK8tTLpR0Y7SLdempJ2xlbiGDZDWzrLIatLg=='
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_API_KEY)
+supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
 
-
-@app.route('/cadastro_cliente', methods=['GET', 'POST'])
+@cadastro_bp.route('/cadastro_cliente', methods=['GET', 'POST'])
+@login_required       
 def cadastro_cliente():
-    if request.method == 'POST':
+    if 'logged_in' not in session:  # Verifica se o usuário está logado
+        return redirect(url_for('login.login'))
+    
+    cliente_pesquisado = None  # Inicializa a variável para armazenar o cliente pesquisado
+    search_query = request.form.get('cpf_cnpj')  # Busca pelo CPF/CNPJ informado
+
+    if request.method == 'POST' and 'consultar' in request.form:
+        if search_query:
+            # Consultar o cliente pelo CPF/CNPJ
+            response = supabase.table('cadastro_cliente').select('*').eq('cpf_cnpj', search_query).execute()
+            if response.data:
+                cliente_pesquisado = response.data[0]
+            else:
+                flash("CPF/CNPJ não cadastrado ou informado incorretamente.", "danger")
+        else:
+            flash("Por favor, informe um CPF/CNPJ para consultar.", "danger")
+
+    if request.method == 'POST' and 'cadastrar' in request.form:
         nome = request.form['nome']
         apelido = request.form['apelido']
         endereco = request.form['endereco']
@@ -24,12 +38,14 @@ def cadastro_cliente():
         telefone = request.form['telefone']
         email = request.form['email']
         tipo_cliente = request.form['tipo_cliente']
-        
+        administrador_alteracao = request.form['administrador_alteracao']
+        status_cliente = request.form['status_cliente']
+
         # Verificar se o CPF/CNPJ já está cadastrado
         response = supabase.table('cadastro_cliente').select('*').eq('cpf_cnpj', cpf_cnpj).execute()
         if response.data:
             flash("CPF/CNPJ já cadastrado!", "danger")
-            return redirect('/cadastro_cliente')
+            return redirect(url_for('cadastro_cliente.cadastro_cliente'))
 
         # Inserir novo cliente
         supabase.table('cadastro_cliente').insert({
@@ -39,47 +55,110 @@ def cadastro_cliente():
             'cpf_cnpj': cpf_cnpj,
             'telefone': telefone,
             'email': email,
-            'tipo_cliente': tipo_cliente
+            'tipo_cliente': tipo_cliente,
+            'administrador_alteracao': administrador_alteracao,
+            'status_cliente': status_cliente
         }).execute()
 
         flash("Cliente cadastrado com sucesso!", "success")
-        return redirect('/cadastro_cliente')
+        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
 
-    return render_template('cadastro_cliente.html')
+    return render_template('cadastro_cliente.html', cliente_pesquisado=cliente_pesquisado)
+
+
+@cadastro_bp.route('/consulta_cliente/<string:cpf_cnpj>', methods=['GET'])
+def consulta_cliente(cpf_cnpj):
+    cliente = supabase.table('cadastro_cliente').select('*').eq('cpf_cnpj', cpf_cnpj).execute()
+    if cliente.data:
+        return render_template('cadastro_cliente.html', cliente_pesquisado=cliente.data[0])
+    else:
+        flash("Cliente não encontrado!", "danger")
+        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
+
+@cadastro_bp.route('/alterar_cliente/<string:cpf_cnpj>', methods=['GET', 'POST'])
+def alterar_cliente(cpf_cnpj):
+    cliente = supabase.table('cadastro_cliente').select('*').eq('cpf_cnpj', cpf_cnpj).execute()
+    if request.method == 'POST':
+        # Dados que podem ser alterados
+        nome = request.form['nome']
+        apelido = request.form['apelido']
+        endereco = request.form['endereco']
+        telefone = request.form['telefone']
+        email = request.form['email']
+        tipo_cliente = request.form['tipo_cliente']
+        administrador_alteracao = request.form['administrador_alteracao']
+        status_cliente = request.form['status_cliente']
+
+        # Atualizar cliente
+        supabase.table('cadastro_cliente').update({
+            'nome_razaosocial': nome,
+            'apelido_nomefantasia': apelido,
+            'endereco': endereco,
+            'telefone': telefone,
+            'email': email,
+            'tipo_cliente': tipo_cliente,
+            'administrador_alteracao': administrador_alteracao,
+            'status_cliente': status_cliente
+        }).eq('cpf_cnpj', cpf_cnpj).execute()
+
+        flash("Cliente alterado com sucesso!", "success")
+        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
+    if cliente.data:
+        return render_template('cadastro_cliente.html', cliente_pesquisado=cliente.data[0])
+    else:
+        flash("Cliente não encontrado!", "danger")
+        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
+
+@cadastro_bp.route('/deletar_cliente/<string:cpf_cnpj>', methods=['POST'])
+def deletar_cliente(cpf_cnpj):
+    supabase.table('cadastro_cliente').delete().eq('cpf_cnpj', cpf_cnpj).execute()
+    flash("Cliente deletado com sucesso!", "success")
+    return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
 
 # Função para importar clientes via CSV
-@app.route('/importar_csv', methods=['POST'])
+@cadastro_bp.route('/importar_csv', methods=['POST'])
 def importar_csv():
     if 'file' not in request.files:
         flash('Nenhum arquivo enviado', 'danger')
-        return redirect('/cadastro_cliente')
+        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
 
     file = request.files['file']
     if file.filename == '':
         flash('Nenhum arquivo selecionado', 'danger')
-        return redirect('/cadastro_cliente')
+        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
 
     csv_file = csv.reader(file)
     for row in csv_file:
         cpf_cnpj = row[3]  # Coluna do CPF/CNPJ no CSV
 
         # Verificar se já existe o CPF/CNPJ
-        response = supabase.table('cadastro_cliente').select('*').eq('cpf_cnpj', cpf_cnpj).execute()
+        response = supabase.table(SUPABASE_USERS_TABLE).select('*').eq('cpf_cnpj', cpf_cnpj).execute()
         if response.data:
             flash(f"CPF/CNPJ {cpf_cnpj} já cadastrado. Importação ignorada.", "danger")
         else:
-            supabase.table('cadastro_cliente').insert({
+            # Inserindo os campos adicionais
+            supabase.table(SUPABASE_USERS_TABLE).insert({
                 'nome_razaosocial': row[0],
                 'apelido_nomefantasia': row[1],
                 'endereco': row[2],
                 'cpf_cnpj': row[3],
                 'telefone': row[4],
                 'email': row[5],
-                'tipo_cliente': row[6]
+                'tipo_cliente': row[6],
+                'data_alteracao': None,  # Inicia como None
+                'administrador_alteracao': None,  # Pode ser None
+                'status_cliente': 'Ativo',  # Definindo como 'Ativo'
+                'data_desativacao': None  # Pode ser None
             }).execute()
 
     flash('Clientes importados com sucesso!', 'success')
-    return redirect('/cadastro_cliente')
+    return redirect(url_for('cadastro_cliente.cadastro_cliente'))
 
 if __name__ == '__main__':
+    app = Flask(__name__)
+    app.register_blueprint(cadastro_bp)
     app.run(debug=True)

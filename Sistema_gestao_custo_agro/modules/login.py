@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session,current_app,Blueprint
 from datetime import datetime, timedelta
 from supabase import create_client
+from utils import login_required
 from config import SUPABASE_URL, SUPABASE_API_KEY, SECRET_KEY,SUPABASE_USERS_TABLE  # Importa as configurações do Supabase
 import requests
 import json
@@ -11,6 +12,7 @@ import smtplib
 from flask_mail import Mail, Message
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
 
 
 login_bp = Blueprint('login', __name__)
@@ -70,6 +72,7 @@ def send_email(to, subject, body):
 
 # Redireciona a rota raiz para a tela de login
 @login_bp.route('/')
+
 def index():
     #return redirect(url_for('login'))
     return redirect(url_for('login.login'))
@@ -92,8 +95,11 @@ def login():
                 # Verificar a senha com o hash armazenado
                 stored_password = user[0]['senha']
                 if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
-                       flash('Login realizado com sucesso!', 'success')
-                       return redirect(url_for('login.cadastro_cliente.html'))  # Renderiza diretamente com o flash
+                       session['logged_in'] = True 
+                       #session['logged_in'] = True
+                       session['user_id'] = user[0]['id']
+                       #flash('Login realizado com sucesso!', 'success')
+                       return redirect(url_for('menu.menu'))  # Renderiza diretamente com o flash
                 else:
                        flash('Senha incorreta!', 'danger')                                      
             else:
@@ -299,6 +305,18 @@ def confirm_email(token):
         flash(f'Erro ao confirmar o e-mail: {e}', 'danger')
 
     return redirect(url_for('login.login'))
+
+
+@login_bp.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    session.pop('user_id', None)
+    flash('Você foi desconectado!', 'success')
+
+    print(f"User logged in: {session.get('logged_in')}")    
+
+    return redirect(url_for('login.login'))
+
 
 
 if __name__ == '__main__':
