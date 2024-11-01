@@ -9,6 +9,7 @@ import bcrypt  # Para hashear as senhas
 import uuid
 import jwt 
 import smtplib
+import socket
 from flask_mail import Mail, Message
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -53,6 +54,7 @@ def supabase_request(method, endpoint, data=None):
     else:
       #  print(f"Error: {response.status_code} - {response.text}")  # Imprime a mensagem de erro
         return None  # Retorna None em caso de erro
+    
 
 
 def send_email(to, subject, body):
@@ -103,7 +105,14 @@ def login():
                 else:
                        flash('Senha incorreta!', 'danger')                                      
             else:
-                flash('Usuário não encontrado!', 'danger')      
+                flash('Usuário não encontrado!', 'danger')   
+        # Tratamento específico para timeout
+        except socket.timeout as e:
+                 flash('Erro de timeout: O servidor demorou muito para responder. Tente novamente mais tarde.', 'danger')
+    
+    # Tratamento para outros erros de conexão
+        except requests.exceptions.RequestException as e:
+                 flash(f'Erro de conexão: {e}', 'danger')              
         except requests.HTTPError as e:
             flash(f'Erro ao buscar o usuário: {e}', 'danger')
         
@@ -142,6 +151,7 @@ def forgot_password():
         else:
             flash('E-mail não cadastrado!', 'danger')
 
+        
         return redirect(url_for('login.login'))  # Redireciona para a página de login
     
     return render_template('forgot_password.html')
@@ -187,8 +197,15 @@ def reset_password(token):
             else:
                 flash('Erro ao redefinir a senha: Nenhuma linha foi atualizada.', 'danger')
                 return redirect(url_for('login.reset_password', token=token))
+        # Tratamento específico para timeout
+        except socket.timeout as e:
+            flash('Erro de timeout: O servidor demorou muito para responder. Tente novamente mais tarde.', 'danger')
+    
+    # Tratamento para outros erros de conexão
+        except requests.exceptions.RequestException as e:
+             flash(f'Erro de conexão: {e}', 'danger')    
         except Exception as e:
-            flash(f'Erro ao redefinir a senha: {e}', 'danger')
+            flash(f'Erro ao redefinir a senha: {e}', 'danger') 
         return redirect(url_for('login.reset_password', token=token))
 
 
@@ -232,7 +249,13 @@ def register():
             flash(f'Erro ao verificar o nome de usuário: {e}', 'danger')
             #return redirect(url_for('register'))
             return redirect(url_for('login.register'))
-
+        # Tratamento específico para timeout
+        except socket.timeout as e:
+             flash('Erro de timeout: O servidor demorou muito para responder. Tente novamente mais tarde.', 'danger')
+    
+    # Tratamento para outros erros de conexão
+        except requests.exceptions.RequestException as e:
+            flash(f'Erro de conexão: {e}', 'danger')
         # Hashear a senha antes de salvar
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
@@ -257,11 +280,17 @@ def register():
 
             flash('Registro realizado com sucesso! Verifique seu e-mail para confirmar.', 'success')
             return redirect(url_for('login.login'))
+        # Tratamento específico para timeout
+        except socket.timeout as e:
+            flash('Erro de timeout: O servidor demorou muito para responder. Tente novamente mais tarde.', 'danger')
+    
+    # Tratamento para outros erros de conexão
+        except requests.exceptions.RequestException as e:
+            flash(f'Erro de conexão: {e}', 'danger')
         except requests.HTTPError as e:
             flash(f'Erro ao criar o usuário: {e}', 'danger')
             #return redirect(url_for('register'))
             return redirect(url_for('login.register'))
-
     return render_template('register.html')
 # Rota para confirmar o e-mail
 @login_bp.route('/confirm_email/<token>')
@@ -301,9 +330,9 @@ def confirm_email(token):
                 flash('O e-mail já foi confirmado anteriormente.', 'info')
         else:
             flash('Token inválido ou e-mail não encontrado.', 'danger')
+        
     except Exception as e:
         flash(f'Erro ao confirmar o e-mail: {e}', 'danger')
-
     return redirect(url_for('login.login'))
 
 

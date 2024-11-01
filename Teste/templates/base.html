@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AdminLTE Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/adminlte.min.css') }}">
+</head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+    <!-- Navbar -->
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <!-- Links da Navbar -->
+    </nav>
+
+    <!-- Menu Lateral -->
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <a href="#" class="brand-link">
+            <span class="brand-text font-weight-light">AdminLTE Flask</span>
+        </a>
+        <div class="sidebar">
+            <!-- Menu -->
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                    <li class="nav-item">
+                        <a href="{{ url_for('home') }}" class="nav-link">
+                            <p>Dashboard</p>
+                        </a>
+                    </li>
+                    <!-- Outros links do menu -->
+                </ul>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Conteúdo da Página -->
+    <div class="content-wrapper">
+        {% block content %}{% endblock %}
+    </div>
+
+</div>
+<script src="{{ url_for('static', filename='js/adminlte.min.js') }}"></script>
+</body>
+</html>

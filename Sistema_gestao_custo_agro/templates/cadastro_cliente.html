@@ -1,3 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Cadastro de Cliente{% endblock %}
+{% block content %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -269,14 +272,10 @@
         {% endif %}
     </form>
     
-    <div class="links">
-        <a href="{{ url_for('login.login') }}">Voltar para a Home</a>
-    </div>
-
     {% if flash_message %}
         <div class="flash-messages">{{ flash_message }}</div>
     {% endif %}
 </div>
-
+{% endblock %}
 </body>
 </html>
