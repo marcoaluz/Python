@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Cadastro de Cliente{% endblock %}
 {% block content %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,7 +13,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cadastro de Cliente</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    
     <style>
+       
         body {
         font-family: 'Arial', sans-serif;
         background-color: #f4f4f4;
@@ -129,24 +133,69 @@
             color: #856404;
         }
     </style>
+    </style>
+    <script>
+        function formatTelefone(input) {
+            let value = input.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+            if (value.length > 11) value = value.slice(0, 11); // Limita a 11 dígitos
+
+            if (value.length >= 2) {
+                value = `(${value.slice(0, 2)}) ` + value.slice(2); // Código de área
+            }
+            if (value.length >= 9) {
+                value = value.slice(0, 9) + '-' + value.slice(9); // Hífen no meio do número
+            }
+
+            input.value = value;
+        }
+        function formatCpfCnpj(input) {
+    let value = input.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+    
+    if (value.length > 14) {
+        value = value.slice(0, 14); // Limita a 14 caracteres numéricos
+    }
+
+    if (value.length <= 11) {
+        // Formata como CPF
+        input.value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    } else if (value.length <= 14) {
+        // Formata como CNPJ
+        input.value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
+}
+
+function setTipoCliente() {
+    const cpfCnpj = document.getElementById("cpf_cnpj").value.replace(/\D/g, '');
+    const tipoCliente = document.getElementById("tipo_cliente");
+
+    if (cpfCnpj.length === 11) {
+        tipoCliente.value = "Física";
+    } else if (cpfCnpj.length === 14) {
+        tipoCliente.value = "Jurídica";
+    } else {
+        tipoCliente.value = ""; // Limpa o campo se não for um CPF ou CNPJ válido
+    }
+}
+    </script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Cliente</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body>
 
-<div class="container" style="float: left; margin-right: 1200px;">
+<div class="container">
     <h2>Cadastro de Cliente</h2>
     
     <form method="POST" action="{{ url_for('cadastro_cliente.cadastro_cliente') }}">
-    
-    <form method="POST" action="{{ url_for('cadastro_cliente.cadastro_cliente') }}">
+
         <div class="row">
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="cpf_cnpj">CPF/CNPJ</label>
-                    <input type="text" name="cpf_cnpj" class="form-control" placeholder="Informe o CPF ou CNPJ" value="{{ cliente_pesquisado['cpf_cnpj'] if cliente_pesquisado else '' }}">
+                    <input type="text" name="cpf_cnpj" id="cpf_cnpj" class="form-control" placeholder="Informe o CPF ou CNPJ" oninput="formatCpfCnpj(this)" onblur="setTipoCliente()">
                 </div>
-            </div>
-            <div class="col-md-6 d-flex align-items-end">
-                <button type="submit" name="consultar" class="btn btn-primary">Consultar</button>
             </div>
         </div>
 
@@ -166,7 +215,8 @@
                 </div>
             </div>
         </div>
-        
+
+        <!-- Campos adicionais do cliente pesquisado -->
         <div class="row">
             <div class="col-md-6">
                 <div class="form-group">
@@ -177,11 +227,11 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="telefone">Telefone</label>
-                    <input type="text" name="telefone" class="form-control" value="{{ cliente_pesquisado['telefone'] }}">
+                    <input type="text" name="telefone" class="form-control" placeholder="(XX) X XXXX-XXXX" oninput="formatTelefone(this)" value="{{ cliente_pesquisado['telefone'] if cliente_pesquisado else '' }}">
                 </div>
             </div>
         </div>
-        
+
         <div class="row">
             <div class="col-md-6">
                 <div class="form-group">
@@ -192,7 +242,7 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="tipo_cliente">Tipo de Cliente</label>
-                    <input type="text" name="tipo_cliente" class="form-control" value="{{ cliente_pesquisado['tipo_cliente'] }}">
+                    <input type="text" name="tipo_cliente" id="tipo_cliente" class="form-control" readonly value="{{ cliente_pesquisado['tipo_cliente'] }}">
                 </div>
             </div>
         </div>
@@ -207,14 +257,17 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="status_cliente">Status do Cliente</label>
-                    <input type="text" name="status_cliente" class="form-control" value="{{ cliente_pesquisado['status_cliente'] }}">
+                    <select id="status_cliente" name="status_cliente" class="form-control">
+                        <option value="Ativo" selected>Ativo</option>
+                        <option value="Desligado">Desligado</option>
+                    </select>
                 </div>
             </div>
         </div>
 
         <!-- Botões de Ação -->
         <div class="btn-group">
-            <button type="submit" name="alterar" class="btn btn-warning">Alterar</button>
+            <button type="submit" name="cadastrar" class="btn btn-primary">Cadastrar</button>
             <button type="submit" name="deletar" class="btn btn-danger">Deletar</button>
             <a href="{{ url_for('cadastro_cliente.cadastro_cliente') }}" class="btn btn-secondary">Cancelar</a>
         </div>
@@ -235,6 +288,7 @@
             </div>
         </div>
 
+        <!-- Campos de Cadastro -->
         <div class="row">
             <div class="col-md-6">
                 <div class="form-group">
@@ -245,7 +299,7 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="telefone">Telefone</label>
-                    <input type="text" name="telefone" class="form-control">
+                    <input type="text" name="telefone" class="form-control" placeholder="(XX) X XXXX-XXXX" oninput="formatTelefone(this)">
                 </div>
             </div>
         </div>
@@ -260,7 +314,7 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="tipo_cliente">Tipo de Cliente</label>
-                    <input type="text" name="tipo_cliente" class="form-control">
+                    <input type="text" name="tipo_cliente" id="tipo_cliente" class="form-control" readonly>
                 </div>
             </div>
         </div>
@@ -275,19 +329,21 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="status_cliente">Status do Cliente</label>
-                    <input type="text" name="status_cliente" class="form-control">
+                    <select id="status_cliente" name="status_cliente" class="form-control">
+                        <option value="Ativo" selected>Ativo</option>
+                        <option value="Desligado">Desligado</option>
+                    </select>
                 </div>
             </div>
         </div>
 
-        <!-- Botão de Cadastro -->
-        <button type="submit" name="cadastrar" class="btn btn-primary">Cadastrar</button>
+        <!-- Botão de Cadastro e Cancelar -->
+        <div class="btn-group">
+            <button type="submit" name="cadastrar" class="btn btn-primary">Cadastrar</button>
+            <a href="{{ url_for('cadastro_cliente.cadastro_cliente') }}" class="btn btn-secondary">Cancelar</a>
+        </div>
         {% endif %}
     </form>
-    
-    {% if flash_message %}
-        <div class="flash-messages">{{ flash_message }}</div>
-    {% endif %}
 </div>
 {% endblock %}
 </body>
