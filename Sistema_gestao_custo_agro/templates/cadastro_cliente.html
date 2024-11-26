@@ -31,17 +31,43 @@
         padding: 15px 10px;
         background: white;
         border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      /*  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+        /*max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);*/
     }
 
         h2 {
+           /* text-align: center;
+            color: #333;*/
             text-align: center;
             color: #333;
+            margin-bottom: 20px;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 15px;/*
+           font-size: 1rem;
+           color: #555;*/
         }
+
+        /*TESTE*/
+        .form-control {
+            font-size: 1.1rem;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .form-control:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        /*TESTE*/
 
         label {
             display: block;
@@ -80,14 +106,57 @@
         }
 
         .btn-group {
+            /*display: flex;
+            justify-content: space-between;*/
             display: flex;
             justify-content: space-between;
+            gap: 15px;
+            margin-top: 20px;
         }
+        /*TESTE*/
+        .btn {
+            flex: 1;
+            font-size: 1rem;
+            padding: 12px;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            border: none;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            border: none;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        /*TESTE*/
 
         .row {
             display: flex;
             flex-wrap: wrap;
             margin-bottom: 15px;
+            gap: auto;
+          /*  display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;*/
         }
 
         .col-md-6 {
@@ -95,21 +164,46 @@
             padding-right: 15px;
             padding-left: 15px;
             box-sizing: border-box;
+            /*flex: 1 1 calc(50% - 15px);
+            min-width: calc(50% - 15px);*/
         }
 
         .col-md-12 {
             flex: 0 0 100%;
+          /* flex: 1 1 100%;
+            min-width: 100%;*/
         }
 
-        @media (max-width: 1000px) {/*768px*/
+        
+        @media (max-width: 768px) {
             .container {
                 padding: 10px;
             }
 
             .col-md-6 {
-                flex: 0 0 100%;
+                flex: 1 1 100%;
+                min-width: 100%;
+            }
+
+            .btn-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .btn {
+                flex: none;
             }
         }
+       /* @media (max-width: 1000px) {/*768px*/
+         /*   .container {
+                padding: 10px;
+            }
+
+            .col-md-6 {
+                flex: 1 1 100%;
+                min-width: 100%;
+            }
+        }*/
 
         .links {
             text-align: center;
@@ -186,6 +280,20 @@ function setTipoCliente() {
 <body>
 
 <div class="container">
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="alert-container">
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
     <h2>Cadastro de Cliente</h2>
     
     <form method="POST" action="{{ url_for('cadastro_cliente.cadastro_cliente') }}">
@@ -340,6 +448,7 @@ function setTipoCliente() {
         <!-- Botão de Cadastro e Cancelar -->
         <div class="btn-group">
             <button type="submit" name="cadastrar" class="btn btn-primary">Cadastrar</button>
+            <button type="submit" name="deletar" class="btn btn-danger">Deletar</button>
             <a href="{{ url_for('cadastro_cliente.cadastro_cliente') }}" class="btn btn-secondary">Cancelar</a>
         </div>
         {% endif %}

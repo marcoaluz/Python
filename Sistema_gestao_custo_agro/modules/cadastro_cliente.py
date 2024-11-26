@@ -41,24 +41,33 @@ def cadastro_cliente():
         administrador_alteracao = request.form['administrador_alteracao']
         status_cliente = request.form['status_cliente']
 
+
         # Verificar se o CPF/CNPJ já está cadastrado
-        response = supabase.table('cadastro_cliente').select('*').eq('cpf_cnpj', cpf_cnpj).execute()
+        response = supabase.table(SUPABASE_USERS_TABLE).select('*').eq('cpf_cnpj', cpf_cnpj).execute()
+
+        print(response)
+
+        
         if response.data:
-            flash("CPF/CNPJ já cadastrado!", "danger")
+            flash(f"CPF/CNPJ {cpf_cnpj} já cadastrado.", "danger")
             return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+        else:
+
+        # Verificar se o CPF/CNPJ já está cadastrado
+       
 
         # Inserir novo cliente
-        supabase.table('cadastro_cliente').insert({
-            'nome_razaosocial': nome,
-            'apelido_nomefantasia': apelido,
-            'endereco': endereco,
-            'cpf_cnpj': cpf_cnpj,
-            'telefone': telefone,
-            'email': email,
-            'tipo_cliente': tipo_cliente,
-            'administrador_alteracao': administrador_alteracao,
-            'status_cliente': status_cliente
-        }).execute()
+             supabase.table('cadastro_cliente').insert({
+                            'nome_razaosocial': nome,
+                            'apelido_nomefantasia': apelido,
+                            'endereco': endereco,
+                            'cpf_cnpj': cpf_cnpj,
+                            'telefone': telefone,
+                            'email': email,
+                            'tipo_cliente': tipo_cliente,
+                            'administrador_alteracao': administrador_alteracao,
+                            'status_cliente': status_cliente
+                            }).execute()
 
         flash("Cliente cadastrado com sucesso!", "success")
         return redirect(url_for('cadastro_cliente.cadastro_cliente'))
