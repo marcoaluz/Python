@@ -11,17 +11,16 @@ supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
 
 @cadastro_bp.route('/cadastro_cliente', methods=['GET', 'POST'])
-@login_required       
+@login_required
 def cadastro_cliente():
-    if 'logged_in' not in session:  # Verifica se o usuário está logado
+    if 'logged_in' not in session:
         return redirect(url_for('login.login'))
     
-    cliente_pesquisado = None  # Inicializa a variável para armazenar o cliente pesquisado
-    search_query = request.form.get('cpf_cnpj')  # Busca pelo CPF/CNPJ informado
+    clientes = supabase.table('cadastro_cliente').select('*').execute()
 
     if request.method == 'POST' and 'consultar' in request.form:
+        search_query = request.form.get('cpf_cnpj', '').strip()
         if search_query:
-            # Consultar o cliente pelo CPF/CNPJ
             response = supabase.table('cadastro_cliente').select('*').eq('cpf_cnpj', search_query).execute()
             if response.data:
                 cliente_pesquisado = response.data[0]
@@ -30,59 +29,20 @@ def cadastro_cliente():
         else:
             flash("Por favor, informe um CPF/CNPJ para consultar.", "danger")
 
-    if request.method == 'POST' and 'cadastrar' in request.form:
-        nome = request.form['nome']
-        apelido = request.form['apelido']
-        endereco = request.form['endereco']
-        cpf_cnpj = request.form['cpf_cnpj']
-        telefone = request.form['telefone']
-        email = request.form['email']
-        tipo_cliente = request.form['tipo_cliente']
-        administrador_alteracao = request.form['administrador_alteracao']
-        status_cliente = request.form['status_cliente']
+    return render_template('cadastro_cliente.html', clientes=clientes.data if clientes.data else [])
 
 
-        # Verificar se o CPF/CNPJ já está cadastrado
-        response = supabase.table(SUPABASE_USERS_TABLE).select('*').eq('cpf_cnpj', cpf_cnpj).execute()
-
-        print(response)
-
-        
-        if response.data:
-            flash(f"CPF/CNPJ {cpf_cnpj} já cadastrado.", "danger")
-            return redirect(url_for('cadastro_cliente.cadastro_cliente'))
-        else:
-
-        # Verificar se o CPF/CNPJ já está cadastrado
-       
-
-        # Inserir novo cliente
-             supabase.table('cadastro_cliente').insert({
-                            'nome_razaosocial': nome,
-                            'apelido_nomefantasia': apelido,
-                            'endereco': endereco,
-                            'cpf_cnpj': cpf_cnpj,
-                            'telefone': telefone,
-                            'email': email,
-                            'tipo_cliente': tipo_cliente,
-                            'administrador_alteracao': administrador_alteracao,
-                            'status_cliente': status_cliente
-                            }).execute()
-
-        flash("Cliente cadastrado com sucesso!", "success")
-        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
-
-    return render_template('cadastro_cliente.html', cliente_pesquisado=cliente_pesquisado)
-
-
-@cadastro_bp.route('/consulta_cliente/<string:cpf_cnpj>', methods=['GET'])
-def consulta_cliente(cpf_cnpj):
-    cliente = supabase.table('cadastro_cliente').select('*').eq('cpf_cnpj', cpf_cnpj).execute()
-    if cliente.data:
-        return render_template('cadastro_cliente.html', cliente_pesquisado=cliente.data[0])
+@cadastro_bp.route('/lista_clientes', methods=['GET'])
+def lista_clientes():
+    query = request.args.get('query', '')
+    if query:
+        clientes = supabase.table('cadastro_cliente').select('*').like('cpf_cnpj', f"%{query}%").execute()
     else:
-        flash("Cliente não encontrado!", "danger")
-        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+        clientes = supabase.table('cadastro_cliente').select('*').execute()
+
+    return render_template('cadastro_cliente.html', clientes=clientes.data if clientes.data else [])
+
+
 
 
 @cadastro_bp.route('/alterar_cliente/<string:cpf_cnpj>', methods=['GET', 'POST'])
@@ -126,6 +86,7 @@ def deletar_cliente(cpf_cnpj):
     supabase.table('cadastro_cliente').delete().eq('cpf_cnpj', cpf_cnpj).execute()
     flash("Cliente deletado com sucesso!", "success")
     return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
 
 
 # Função para importar clientes via CSV
