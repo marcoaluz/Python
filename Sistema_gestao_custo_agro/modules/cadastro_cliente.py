@@ -1,6 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, Blueprint
+from flask import Flask, render_template, request, redirect, url_for, flash, session, Blueprint, jsonify
 from utils import login_required
-
 from supabase import create_client
 from config import SUPABASE_URL, SUPABASE_API_KEY
 
@@ -43,42 +42,15 @@ def lista_clientes():
     return render_template('cadastro_cliente.html', clientes=clientes.data if clientes.data else [])
 
 
-
-
-@cadastro_bp.route('/alterar_cliente/<string:cpf_cnpj>', methods=['GET', 'POST'])
+@cadastro_bp.route('/alterar_cliente/<string:cpf_cnpj>', methods=['GET'])
 def alterar_cliente(cpf_cnpj):
     cliente = supabase.table('cadastro_cliente').select('*').eq('cpf_cnpj', cpf_cnpj).execute()
-    if request.method == 'POST':
-        # Dados que podem ser alterados
-        nome = request.form['nome']
-        apelido = request.form['apelido']
-        endereco = request.form['endereco']
-        telefone = request.form['telefone']
-        email = request.form['email']
-        tipo_cliente = request.form['tipo_cliente']
-        administrador_alteracao = request.form['administrador_alteracao']
-        status_cliente = request.form['status_cliente']
-
-        # Atualizar cliente
-        supabase.table('cadastro_cliente').update({
-            'nome_razaosocial': nome,
-            'apelido_nomefantasia': apelido,
-            'endereco': endereco,
-            'telefone': telefone,
-            'email': email,
-            'tipo_cliente': tipo_cliente,
-            'administrador_alteracao': administrador_alteracao,
-            'status_cliente': status_cliente
-        }).eq('cpf_cnpj', cpf_cnpj).execute()
-
-        flash("Cliente alterado com sucesso!", "success")
-        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
-
+    
     if cliente.data:
-        return render_template('cadastro_cliente.html', cliente_pesquisado=cliente.data[0])
+        return jsonify(cliente.data[0])  # Retorna os dados do cliente como JSON
     else:
-        flash("Cliente não encontrado!", "danger")
-        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+        return jsonify({"error": "Cliente não encontrado"}), 404
+
 
 
 @cadastro_bp.route('/deletar_cliente/<string:cpf_cnpj>', methods=['POST'])
@@ -127,6 +99,52 @@ def importar_csv():
 
     flash('Clientes importados com sucesso!', 'success')
     return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
+@cadastro_bp.route('/salvar_cliente', methods=['POST'])
+def salvar_cliente():
+    # Obtenção de dados do formulário
+    nome_razaosocial = request.form.get('nome_razaosocial')
+    apelido_nomefantasia = request.form.get('apelido_nomefantasia')
+    endereco = request.form.get('endereco')
+    cpf_cnpj = request.form.get('cpf_cnpj')
+    telefone = request.form.get('telefone')
+    email = request.form.get('email')
+    tipo_cliente = request.form.get('tipo_cliente')
+    administrador_alteracao = request.form.get('administrador_alteracao')
+
+    # Verifica se todos os campos obrigatórios foram preenchidos
+    if not all([nome_razaosocial, cpf_cnpj, telefone, email, tipo_cliente]):
+        flash('Por favor, preencha todos os campos obrigatórios.', 'danger')
+        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
+    # Verificar se o CPF/CNPJ já está cadastrado
+    response = supabase.table(SUPABASE_USERS_TABLE).select('*').eq('cpf_cnpj', cpf_cnpj).execute()
+    if response.data:
+        flash(f"CPF/CNPJ {cpf_cnpj} já cadastrado. Operação cancelada.", 'danger')
+        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
+    # Inserir os dados no Supabase
+    try:
+        supabase.table(SUPABASE_USERS_TABLE).insert({
+            'nome_razaosocial': nome_razaosocial,
+            'apelido_nomefantasia': apelido_nomefantasia,
+            'endereco': endereco,
+            'cpf_cnpj': cpf_cnpj,
+            'telefone': telefone,
+            'email': email,
+            'tipo_cliente': tipo_cliente,
+            'data_alteracao': None,  # Inicialmente como None
+            'administrador_alteracao': administrador_alteracao,
+            'status_cliente': 'Ativo',  # Status inicial como 'Ativo'
+            'data_desativacao': None  # Nenhuma data de desativação no início
+        }).execute()
+        flash('Cliente salvo com sucesso!', 'success')
+    except Exception as e:
+        flash(f'Ocorreu um erro ao salvar o cliente: {str(e)}', 'danger')
+
+    # Redireciona de volta para a tela de cadastro
+    return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
 
 if __name__ == '__main__':
     app = Flask(__name__)
