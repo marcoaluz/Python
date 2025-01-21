@@ -52,6 +52,7 @@ def cadastro_cliente():
         search_query=search_query
     )
     
+    
 
 @cadastro_bp.route('/lista_clientes', methods=['GET'])
 def lista_clientes():

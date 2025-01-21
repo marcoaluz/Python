@@ -219,6 +219,7 @@ function salvarAlteracoes() {
             return false;
         }
     }
+
  
     // Função para normalizar o texto, removendo pontos, traços, espaços e acentos
 function normalizarTexto(texto) {
@@ -234,22 +235,15 @@ function executarPesquisa() {
     const termoPesquisa = normalizarTexto(document.getElementById("campoPesquisa").value.trim());
     const linhas = document.querySelectorAll("tbody tr");
 
-    // Se o campo de pesquisa estiver vazio, mostra todos os registros
-    if (termoPesquisa === "") {
-        linhas.forEach(linha => {
-            linha.style.display = ""; // Mostra todas as linhas
-        });
-    } else {
-        // Caso contrário, filtra as linhas com base no termo de pesquisa
-        linhas.forEach(linha => {
-            const textoLinha = normalizarTexto(linha.textContent);
-            if (textoLinha.includes(termoPesquisa)) {
-                linha.style.display = ""; // Mostra a linha
-            } else {
-                linha.style.display = "none"; // Esconde a linha
-            }
-        });
-    }
+    linhas.forEach(linha => {
+        const textoLinha = normalizarTexto(linha.textContent);
+        // Exibe a linha se o termo de pesquisa for encontrado em qualquer parte do texto
+        if (textoLinha.includes(termoPesquisa)) {
+            linha.style.display = ""; // Mostra a linha
+        } else {
+            linha.style.display = "none"; // Esconde a linha
+        }
+    });
 }
 
 // Função para detectar Enter no campo de pesquisa
@@ -292,6 +286,7 @@ function verificarTeclaEnter(event) {
                 <div class="input-group w-50">
                     <input type="text" id="campoPesquisa" class="form-control" placeholder="Pesquise por CPF ou Nome" oninput="executarPesquisa()" onkeydown="verificarTeclaEnter(event)" />
                     <button class="btn btn-primary" type="button" onclick="executarPesquisa()">Pesquisar</button>
+                    
                 </div>
 
                 
@@ -299,7 +294,6 @@ function verificarTeclaEnter(event) {
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#cadastroModal">
                     Novo Cadastro
                 </button>
-
 
             </div>
         
@@ -314,8 +308,8 @@ function verificarTeclaEnter(event) {
                             <th>Endereço</th>
                             <th>Telefone</th>
                             <th>E-mail</th>
-                            <th>Tipo Cliente</th>
                             <th>Administrador</th>
+                            <th>Tipo Cliente</th>
                             <th>Status</th>
                             <th class="text-center">Ações</th>
                         </tr>
@@ -329,8 +323,8 @@ function verificarTeclaEnter(event) {
                             <td>{{ cliente.endereco }}</td>
                             <td>{{ cliente.telefone }}</td>
                             <td>{{ cliente.email }}</td>
-                            <td>{{ cliente.tipo_cliente }}</td>
                             <td>{{ cliente.administrador_alteracao }}</td>
+                            <td>{{ cliente.tipo_cliente }}</td>
                             <td>{{ cliente.status_cliente }}</td>
                             <td class="text-center">
 
@@ -402,6 +396,11 @@ function verificarTeclaEnter(event) {
                                 <div class="col-md-6 mb-3">
                                     <label for="email" class="form-label">E-mail</label>
                                     <input type="email" class="form-control" id="email" name="email" required oninput="this.value = this.value.toUpperCase();">
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="endereco" class="form-label">Administrador</label>
+                                    <input type="text" class="form-control" id="administrador_alteracao" name="administrador_alteracao" required oninput="this.value = this.value.toUpperCase();">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="tipo_cliente" class="form-label">Tipo Cliente</label>
