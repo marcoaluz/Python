@@ -1,6 +1,7 @@
-from flask import Flask
+from flask import Flask, render_template
 from flask_mail import Mail
 from config import SECRET_KEY
+import logging
 
 
 
@@ -32,7 +33,6 @@ from modules.menu import menu_bp
 app.register_blueprint(login_bp)
 app.register_blueprint(cadastro_bp)
 app.register_blueprint(menu_bp)
-
 
 
 

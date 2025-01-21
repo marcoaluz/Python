@@ -340,6 +340,7 @@ def confirm_email(token):
 def logout():
     session.pop('logged_in', None)
     session.pop('user_id', None)
+    session.clear()
     flash('Você foi desconectado!', 'success')
 
     print(f"User logged in: {session.get('logged_in')}")    

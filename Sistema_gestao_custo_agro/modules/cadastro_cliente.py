@@ -1,6 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, Blueprint, jsonify
 from utils import login_required
 from supabase import create_client
+from datetime import datetime
+from math import ceil
+
 from config import SUPABASE_URL, SUPABASE_API_KEY
 
 cadastro_bp = Blueprint('cadastro_cliente', __name__)
@@ -9,48 +12,99 @@ SUPABASE_USERS_TABLE = 'cadastro_cliente'
 supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
 
+
 @cadastro_bp.route('/cadastro_cliente', methods=['GET', 'POST'])
 @login_required
 def cadastro_cliente():
     if 'logged_in' not in session:
         return redirect(url_for('login.login'))
     
-    clientes = supabase.table('cadastro_cliente').select('*').execute()
 
-    if request.method == 'POST' and 'consultar' in request.form:
-        search_query = request.form.get('cpf_cnpj', '').strip()
-        if search_query:
-            response = supabase.table('cadastro_cliente').select('*').eq('cpf_cnpj', search_query).execute()
-            if response.data:
-                cliente_pesquisado = response.data[0]
-            else:
-                flash("CPF/CNPJ não cadastrado ou informado incorretamente.", "danger")
-        else:
-            flash("Por favor, informe um CPF/CNPJ para consultar.", "danger")
+    # Número de itens por página
+    items_per_page = 10
+    # Página atual (padrão: 1)
+    current_page = int(request.args.get('page', 1))
 
-    return render_template('cadastro_cliente.html', clientes=clientes.data if clientes.data else [])
+    # Obter o termo de pesquisa, se houver
+    search_query = request.args.get('query', '').strip()
 
+    # Fatiando os dados para a paginação
+    start_index = (current_page - 1) * items_per_page
+    end_index = start_index + items_per_page
+
+    # Caso haja pesquisa
+    if search_query:
+        clientes = supabase.table('cadastro_cliente').select('*').like('cpf_cnpj', f"%{search_query}%").range(start_index, end_index).execute()
+    else:
+        # Se não houver pesquisa, carrega todos os clientes
+        clientes = supabase.table('cadastro_cliente').select('*').range(start_index, end_index).execute()
+
+    # Calcular total de clientes
+    total_clients = supabase.table('cadastro_cliente').select('*').like('cpf_cnpj', f"%{search_query}%").execute()
+    total_clients_count = len(total_clients.data) if total_clients.data else 0
+    total_pages = ceil(total_clients_count / items_per_page)
+
+    return render_template(
+        'cadastro_cliente.html',
+        clientes=clientes.data if clientes.data else [],
+        current_page=current_page,
+        total_pages=total_pages,
+        search_query=search_query
+    )
+    
 
 @cadastro_bp.route('/lista_clientes', methods=['GET'])
 def lista_clientes():
+    # Obter número da página e limite por página
+    page = int(request.args.get('page', 1))  # Página padrão: 1
+    per_page = 10  # Quantidade de  registros por página
+    start_index = (page - 1) * per_page
+    end_index = start_index + per_page - 1
+
+    # Obter termo de busca, se houver
     query = request.args.get('query', '')
+
+    # Busca no banco de dados com paginação
     if query:
-        clientes = supabase.table('cadastro_cliente').select('*').like('cpf_cnpj', f"%{query}%").execute()
+         response = supabase.table('cadastro_cliente').select('*').like('cpf_cnpj', f"%{query}%").range(start_index, end_index).execute()
+         total_clientes_response = supabase.table('cadastro_cliente').select('cpf_cnpj').like('cpf_cnpj', f"%{query}%").execute()    
+
     else:
-        clientes = supabase.table('cadastro_cliente').select('*').execute()
-
-    return render_template('cadastro_cliente.html', clientes=clientes.data if clientes.data else [])
-
-
-@cadastro_bp.route('/alterar_cliente/<string:cpf_cnpj>', methods=['GET'])
-def alterar_cliente(cpf_cnpj):
-    cliente = supabase.table('cadastro_cliente').select('*').eq('cpf_cnpj', cpf_cnpj).execute()
+        response = supabase.table('cadastro_cliente').select('*').range(start_index, end_index).execute()
+        total_clientes_response = supabase.table('cadastro_cliente').select('cpf_cnpj').execute()
+    # Total de registros para calcular o número de páginas
     
-    if cliente.data:
-        return jsonify(cliente.data[0])  # Retorna os dados do cliente como JSON
-    else:
-        return jsonify({"error": "Cliente não encontrado"}), 404
+    total_clientes_response = supabase.table('cadastro_cliente').select('cpf_cnpj', count='exact').execute()
 
+    total_clientes = len(total_clientes_response.data) if total_clientes_response.data else 0
+    total_pages = ceil(total_clientes / per_page)
+
+    
+
+
+    return render_template(
+        'cadastro_cliente.html',
+        clientes=response.data if response.data else [],
+        current_page=page,
+        total_pages=total_pages
+    )
+
+@cadastro_bp.route('/alterar_cliente', methods=['POST'])
+def alterar_cliente():
+    dados_cliente = request.form.to_dict()
+
+    for key in dados_cliente:
+        if isinstance(dados_cliente[key], str):
+            dados_cliente[key] = dados_cliente[key].upper()
+    # Atualizar a data de alteração
+    dados_cliente['data_alteracao'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    # print(dados_cliente)  # Adicionado para debug
+    response = supabase.table('cadastro_cliente').update(dados_cliente).eq('cpf_cnpj', dados_cliente['cpf_cnpj']).execute()
+   # print(response)  # Adicionado para verificar a resposta
+
+   
+    flash('Cadastro alterado com sucesso!', 'success')
+    return redirect(url_for('cadastro_cliente.lista_clientes'))
 
 
 @cadastro_bp.route('/deletar_cliente/<string:cpf_cnpj>', methods=['POST'])
