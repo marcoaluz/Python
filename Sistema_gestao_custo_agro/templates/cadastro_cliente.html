@@ -221,35 +221,123 @@ function salvarAlteracoes() {
     }
 
  
-    // Função para normalizar o texto, removendo pontos, traços, espaços e acentos
+ // Função para normalizar o texto, removendo pontos, traços, espaços e acentos
 function normalizarTexto(texto) {
     return texto
         .normalize("NFD") // Remove acentos
         .replace(/[\u0300-\u036f]/g, "") // Remove marcas de acentuação
-        .replace(/[\.\-\s]/g, '') // Remove pontos, traços e espaços
+        .replace(/[\.\-]/g, '') // Remove pontos, traços e espaços
         .toLowerCase(); // Converte para minúsculas
-}
-
-// Função para executar a pesquisa em todos os registros
-function executarPesquisa() {
-    const termoPesquisa = normalizarTexto(document.getElementById("campoPesquisa").value.trim());
-    const linhas = document.querySelectorAll("tbody tr");
-
-    linhas.forEach(linha => {
-        const textoLinha = normalizarTexto(linha.textContent);
-        // Exibe a linha se o termo de pesquisa for encontrado em qualquer parte do texto
-        if (textoLinha.includes(termoPesquisa)) {
-            linha.style.display = ""; // Mostra a linha
-        } else {
-            linha.style.display = "none"; // Esconde a linha
-        }
-    });
 }
 
 // Função para detectar Enter no campo de pesquisa
 function verificarTeclaEnter(event) {
     if (event.key === "Enter") {
         executarPesquisa();
+    }
+}
+
+// Função para pesquisa dinâmica
+function pesquisarDinamico() {
+    const termoPesquisa = normalizarTexto(document.getElementById("campoPesquisa").value.trim());
+
+    // Faz a requisição AJAX para buscar os resultados
+    if (!termoPesquisa) {
+        carregarRegistrosIniciais(); // Se o campo estiver vazio, carrega os registros iniciais
+        return;
+    }
+
+    fetch(`/buscar_clientes?query=${encodeURIComponent(termoPesquisa)}`)
+        .then(response => response.json())
+        .then(clientes => {
+            atualizarTabela(clientes);
+        })
+        .catch(error => {
+            console.error("Erro ao buscar clientes:", error);
+        });
+}
+
+// Função para carregar os 10 primeiros registros da página inicial
+function carregarRegistrosIniciais() {
+    fetch(`/lista_clientes?page=1`)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.clientes) {
+                atualizarTabela(data.clientes); // Passa a lista de clientes
+            } else {
+                limparTabela(); // Limpa a tabela caso os dados estejam vazios
+            }
+        })
+        .catch(error => {
+            console.error("Erro ao carregar registros iniciais:", error);
+        });
+}
+
+// Função para atualizar a tabela com os resultados retornados
+function atualizarTabela(clientes) {
+    const tbody = document.querySelector("tbody");
+    tbody.innerHTML = ""; // Limpa a tabela
+
+    if (clientes.length === 0) {
+        const linhaVazia = document.createElement("tr");
+        linhaVazia.innerHTML = `<td colspan="10" class="text-center">Nenhum cliente encontrado.</td>`;
+        tbody.appendChild(linhaVazia);
+        return;
+    }
+
+    // Preenche a tabela com os resultados
+    clientes.forEach(cliente => {
+        const linha = document.createElement("tr");
+        linha.innerHTML = `
+            <td>${cliente.cpf_cnpj}</td>
+            <td>${cliente.nome_razaosocial}</td>
+            <td>${cliente.apelido_nomefantasia}</td>
+            <td>${cliente.endereco}</td>
+            <td>${cliente.telefone}</td>
+            <td>${cliente.email}</td>
+            <td>${cliente.administrador_alteracao}</td>
+            <td>${cliente.tipo_cliente}</td>
+            <td>${cliente.status_cliente}</td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#alterarModal" 
+                        onclick="preencherModal('${cliente.cpf_cnpj}', '${cliente.nome_razaosocial}', '${cliente.apelido_nomefantasia}', '${cliente.endereco}', '${cliente.telefone}', '${cliente.email}', '${cliente.tipo_cliente}', '${cliente.administrador_alteracao}', '${cliente.status_cliente}')">
+                    Alterar
+                </button>
+                <form method="POST" action="/cadastro_cliente/deletar_cliente/${cliente.cpf_cnpj}" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir este cliente?')">Deletar</button>
+                </form>
+            </td>
+        `;
+        tbody.appendChild(linha);
+    });
+}
+
+// Função para limpar a tabela
+function limparTabela() {
+    const tbody = document.querySelector("tbody");
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="10" class="text-center">Nenhum cliente encontrado.</td>
+        </tr>
+    `;
+}
+
+// Função para monitorar o campo de pesquisa
+function buscarClientes() {
+    const inputPesquisa = document.querySelector("#campoPesquisa"); // ID do campo de pesquisa
+    const query = inputPesquisa.value;
+
+    if (query.trim() === "") {
+        carregarRegistrosIniciais(); // Carrega os 10 registros iniciais se o campo estiver vazio
+    } else {
+        fetch(`/buscar_clientes?query=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                atualizarTabela(data.clientes || [], query);
+            })
+            .catch(error => {
+                console.error("Erro ao buscar clientes:", error);
+            });
     }
 }
 
@@ -282,13 +370,17 @@ function verificarTeclaEnter(event) {
         
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
                 <h2>Gestão de Clientes</h2>
-               
-                <div class="input-group w-50">
-                    <input type="text" id="campoPesquisa" class="form-control" placeholder="Pesquise por CPF ou Nome" oninput="executarPesquisa()" onkeydown="verificarTeclaEnter(event)" />
-                    <button class="btn btn-primary" type="button" onclick="executarPesquisa()">Pesquisar</button>
-                    
-                </div>
+                
 
+
+                <div class="input-group w-50">
+                    <input 
+                        type="text" 
+                        id="campoPesquisa" 
+                        class="form-control" 
+                        placeholder="Pesquise por CPF ou Nome DINAMICO" 
+                        oninput="pesquisarDinamico()" onkeydown="verificarTeclaEnter(event)"/>
+                </div>
                 
 
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#cadastroModal">
@@ -402,6 +494,7 @@ function verificarTeclaEnter(event) {
                                     <label for="endereco" class="form-label">Administrador</label>
                                     <input type="text" class="form-control" id="administrador_alteracao" name="administrador_alteracao" required oninput="this.value = this.value.toUpperCase();">
                                 </div>
+
                                 <div class="col-md-6 mb-3">
                                     <label for="tipo_cliente" class="form-label">Tipo Cliente</label>
                                     <input type="text" class="form-control" id="tipo_cliente" name="tipo_cliente" readonly>
@@ -496,7 +589,8 @@ function verificarTeclaEnter(event) {
                     </a>
                 </li>
                 {% endif %}
-            
+
+
                 {% for page in range(1, total_pages + 1) %}
                 <li class="page-item {% if page == current_page %}active{% endif %}">
                     <a class="page-link" href="{{ url_for('cadastro_cliente.lista_clientes', page=page, query=request.args.get('query', '') ) }}">{{ page }}</a>
