@@ -3,6 +3,10 @@ from utils import login_required
 from supabase import create_client
 from datetime import datetime
 from math import ceil
+import httpx
+import asyncio
+from httpx import Limits,Client
+import re
 
 from config import SUPABASE_URL, SUPABASE_API_KEY
 
@@ -11,7 +15,14 @@ cadastro_bp = Blueprint('cadastro_cliente', __name__)
 SUPABASE_USERS_TABLE = 'cadastro_cliente'
 supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
+timeout = httpx.Timeout(10.0)  # Defina o timeout para 10 segundos
+client = httpx.Client(timeout=timeout)
 
+# Instanciando Limits corretamente
+limits = Limits(max_connections=10)
+
+# Criando o cliente httpx com a instância de Limits
+client = Client(timeout=timeout, limits=limits)
 
 @cadastro_bp.route('/cadastro_cliente', methods=['GET', 'POST'])
 @login_required
@@ -108,16 +119,25 @@ def lista_clientes():
     #)
 
 
+
+# Função para normalizar o termo de pesquisa (remover caracteres especiais)
+def normalizar_termo(termo):
+    return re.sub(r'[^0-9a-zA-Z]+', '', termo)  # Remove tudo o que não for número ou letra
+
+
 @cadastro_bp.route('/buscar_clientes', methods=['GET'])
 def buscar_clientes():
     termo = request.args.get('query', '').strip()
 
     if not termo:
         return jsonify([])  # Retorna uma lista vazia se não houver termo
+    
+    termo_normalizado = normalizar_termo(termo) 
 
     # Busca no banco de dados por CPF/CNPJ ou nome que contenham o termo
-    response = supabase.table('cadastro_cliente').select('*').ilike('cpf_cnpj', f"%{termo}%").execute()
-    response_nome = supabase.table('cadastro_cliente').select('*').ilike('nome_razaosocial', f"%{termo}%").execute()
+   #response = supabase.table('cadastro_cliente').select('*').filter('cpf_cnpj', 'ilike', f"%{termo}%").execute()
+    response = supabase.table('cadastro_cliente').select('*').ilike('cpf_cnpj', f"%{termo_normalizado}%").execute()
+    response_nome = supabase.table('cadastro_cliente').select('*').ilike('nome_razaosocial', f"%{termo_normalizado}%").execute()
 
     # Combina os resultados de ambas as consultas, evitando duplicados
     clientes = {cliente['cpf_cnpj']: cliente for cliente in (response.data + response_nome.data)}.values()
