@@ -219,6 +219,7 @@ function salvarAlteracoes() {
             return false;
         }
     }
+
 // Normalizar texto (remove caracteres especiais)
 function normalizarTexto(texto) {
     return texto.replace(/[\.\-\/]/g, '').trim(); // Remove pontos, traços e barras
@@ -248,11 +249,11 @@ function formatCpfCnpj(termo) {
 
 // Limitar tamanho do campo para CPF ou CNPJ
 function limitarTamanhoCampo(campo) {
-    const tipo = detectarTipo(campo.value);
-    if (tipo === 'CPF' || tipo === 'CNPJ') {
-        const apenasNumeros = campo.value.replace(/\D/g, ''); // Remove caracteres não numéricos
-        campo.value = apenasNumeros.slice(0, 14); // Trunca para 14 dígitos
+    let valorAtual = campo.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+    if (valorAtual.length > 14) {
+        valorAtual = valorAtual.slice(0, 14); // Trunca para 14 dígitos
     }
+    campo.value = valorAtual; // Atualiza o valor do campo
 }
 
 // Pesquisar dinamicamente
@@ -260,14 +261,20 @@ function pesquisarDinamico() {
     const campoPesquisa = document.getElementById("campoPesquisa");
     let termoPesquisa = campoPesquisa.value.trim();
 
-    // Detecta tipo e aplica formatação se necessário
-    const tipo = detectarTipo(termoPesquisa);
-    if (tipo === 'CPF' || tipo === 'CNPJ') {
-        limitarTamanhoCampo(campoPesquisa); // Limita o campo a 14 caracteres
-        termoPesquisa = formatCpfCnpj(campoPesquisa.value); // Aplica a formatação
+    // If the search field is empty, restore the original table
+    if (termoPesquisa === "") {
+        restoreOriginalTable();
+        return;
     }
 
-    // Faz a requisição para o backend
+    // Detect type and apply formatting if necessary
+    const tipo = detectarTipo(termoPesquisa);
+    if (tipo === 'CPF' || tipo === 'CNPJ') {
+        limitarTamanhoCampo(campoPesquisa); 
+        termoPesquisa = formatCpfCnpj(campoPesquisa.value);
+    }
+
+    // Make request to backend
     fetch(`/buscar_clientes?query=${encodeURIComponent(termoPesquisa)}`)
         .then(response => {
             if (!response.ok) {
@@ -276,11 +283,17 @@ function pesquisarDinamico() {
             return response.json();
         })
         .then(clientes => {
-            atualizarTabela(clientes); // Atualiza a tabela com os resultados
+            atualizarTabela(clientes);
         })
         .catch(error => {
             console.error("Erro ao buscar clientes:", error);
         });
+}
+
+// New function to restore the original table
+function restoreOriginalTable() {
+    // Reload the page to restore original data
+    location.reload();
 }
 
 // Atualizar tabela com os resultados
@@ -330,10 +343,17 @@ function verificarTeclaEnter(event) {
 
 // Adicionar eventos ao campo de pesquisa
 document.getElementById("campoPesquisa").addEventListener("input", function () {
-    limitarTamanhoCampo(this); // Limita o tamanho do campo para CPF ou CNPJ
+    const tipo = detectarTipo(this.value);
+    if (tipo === 'CPF' || tipo === 'CNPJ') {
+        limitarTamanhoCampo(this); // Aplica o limitador de tamanho
+    }
 });
 
 document.getElementById("campoPesquisa").addEventListener("keypress", verificarTeclaEnter);
+
+
+
+
 
 
     </script>
