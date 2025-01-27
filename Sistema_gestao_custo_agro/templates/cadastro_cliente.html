@@ -220,35 +220,68 @@ function salvarAlteracoes() {
         }
     }
 
- 
- // Função para normalizar o texto, removendo pontos, traços, espaços e acentos
+// Normalizar texto (remove caracteres especiais)
 function normalizarTexto(texto) {
-    return texto
-        .normalize("NFD") // Remove acentos
-        .replace(/[\u0300-\u036f]/g, "") // Remove marcas de acentuação
-        .replace(/[\.\-]/g, '') // Remove pontos, traços e espaços
-        .toLowerCase(); // Converte para minúsculas
+    return texto.replace(/[\.\-\/]/g, '').trim(); // Remove pontos, traços e barras
 }
 
-// Função para detectar Enter no campo de pesquisa
-function verificarTeclaEnter(event) {
-    if (event.key === "Enter") {
-        executarPesquisa();
+// Detectar tipo de dado (CPF ou CNPJ)
+function detectarTipo(termo) {
+    const apenasNumeros = termo.replace(/\D/g, ''); // Remove tudo que não for número
+    if (apenasNumeros.length === 11) {
+        return 'CPF';
+    } else if (apenasNumeros.length === 14) {
+        return 'CNPJ';
     }
+    return 'Nome'; // Se não for CPF ou CNPJ, tratamos como nome
 }
 
-// Função para pesquisa dinâmica
-function pesquisarDinamico() {
-    const termoPesquisa = normalizarTexto(document.getElementById("campoPesquisa").value.trim());
+// Formatar CPF ou CNPJ dinamicamente
+function formatCpfCnpj(termo) {
+    const apenasNumeros = termo.replace(/\D/g, ''); // Remove tudo que não for número
+    if (apenasNumeros.length === 11) {
+        return apenasNumeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'); // Formato CPF
+    } else if (apenasNumeros.length === 14) {
+        return apenasNumeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5'); // Formato CNPJ
+    }
+    return termo; // Retorna o termo original caso não seja CPF ou CNPJ
+}
 
-    // Faz a requisição AJAX para buscar os resultados
-    if (!termoPesquisa) {
-        carregarRegistrosIniciais(); // Se o campo estiver vazio, carrega os registros iniciais
+// Limitar tamanho do campo para CPF ou CNPJ
+function limitarTamanhoCampo(campo) {
+    let valorAtual = campo.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+    if (valorAtual.length > 14) {
+        valorAtual = valorAtual.slice(0, 14); // Trunca para 14 dígitos
+    }
+    campo.value = valorAtual; // Atualiza o valor do campo
+}
+
+// Pesquisar dinamicamente
+function pesquisarDinamico() {
+    const campoPesquisa = document.getElementById("campoPesquisa");
+    let termoPesquisa = campoPesquisa.value.trim();
+
+    // If the search field is empty, restore the original table
+    if (termoPesquisa === "") {
+        restoreOriginalTable();
         return;
     }
 
+    // Detect type and apply formatting if necessary
+    const tipo = detectarTipo(termoPesquisa);
+    if (tipo === 'CPF' || tipo === 'CNPJ') {
+        limitarTamanhoCampo(campoPesquisa); 
+        termoPesquisa = formatCpfCnpj(campoPesquisa.value);
+    }
+
+    // Make request to backend
     fetch(`/buscar_clientes?query=${encodeURIComponent(termoPesquisa)}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erro na requisição: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(clientes => {
             atualizarTabela(clientes);
         })
@@ -257,23 +290,13 @@ function pesquisarDinamico() {
         });
 }
 
-// Função para carregar os 10 primeiros registros da página inicial
-function carregarRegistrosIniciais() {
-    fetch(`/lista_clientes?page=1`)
-        .then(response => response.json())
-        .then(data => {
-            if (data && data.clientes) {
-                atualizarTabela(data.clientes); // Passa a lista de clientes
-            } else {
-                limparTabela(); // Limpa a tabela caso os dados estejam vazios
-            }
-        })
-        .catch(error => {
-            console.error("Erro ao carregar registros iniciais:", error);
-        });
+// New function to restore the original table
+function restoreOriginalTable() {
+    // Reload the page to restore original data
+    location.reload();
 }
 
-// Função para atualizar a tabela com os resultados retornados
+// Atualizar tabela com os resultados
 function atualizarTabela(clientes) {
     const tbody = document.querySelector("tbody");
     tbody.innerHTML = ""; // Limpa a tabela
@@ -285,7 +308,6 @@ function atualizarTabela(clientes) {
         return;
     }
 
-    // Preenche a tabela com os resultados
     clientes.forEach(cliente => {
         const linha = document.createElement("tr");
         linha.innerHTML = `
@@ -312,34 +334,27 @@ function atualizarTabela(clientes) {
     });
 }
 
-// Função para limpar a tabela
-function limparTabela() {
-    const tbody = document.querySelector("tbody");
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="10" class="text-center">Nenhum cliente encontrado.</td>
-        </tr>
-    `;
-}
-
-// Função para monitorar o campo de pesquisa
-function buscarClientes() {
-    const inputPesquisa = document.querySelector("#campoPesquisa"); // ID do campo de pesquisa
-    const query = inputPesquisa.value;
-
-    if (query.trim() === "") {
-        carregarRegistrosIniciais(); // Carrega os 10 registros iniciais se o campo estiver vazio
-    } else {
-        fetch(`/buscar_clientes?query=${encodeURIComponent(query)}`)
-            .then(response => response.json())
-            .then(data => {
-                atualizarTabela(data.clientes || [], query);
-            })
-            .catch(error => {
-                console.error("Erro ao buscar clientes:", error);
-            });
+// Detectar Enter no campo de pesquisa
+function verificarTeclaEnter(event) {
+    if (event.key === "Enter") {
+        pesquisarDinamico();
     }
 }
+
+// Adicionar eventos ao campo de pesquisa
+document.getElementById("campoPesquisa").addEventListener("input", function () {
+    const tipo = detectarTipo(this.value);
+    if (tipo === 'CPF' || tipo === 'CNPJ') {
+        limitarTamanhoCampo(this); // Aplica o limitador de tamanho
+    }
+});
+
+document.getElementById("campoPesquisa").addEventListener("keypress", verificarTeclaEnter);
+
+
+
+
+
 
     </script>
     

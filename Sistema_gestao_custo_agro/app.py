@@ -28,11 +28,12 @@ app.secret_key = SECRET_KEY
 from modules.login import login_bp
 from modules.cadastro_cliente import cadastro_bp
 from modules.menu import menu_bp
-
+from modules.cadastro_propriedade import cadastro_bp as cadastro_propriedade_bp
 
 app.register_blueprint(login_bp)
 app.register_blueprint(cadastro_bp)
 app.register_blueprint(menu_bp)
+app.register_blueprint(cadastro_propriedade_bp)
 
 
 

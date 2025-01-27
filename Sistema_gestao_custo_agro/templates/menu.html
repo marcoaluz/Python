@@ -55,11 +55,11 @@
     <nav class="nav flex-column">
         <a href="{{ url_for('cadastro_cliente.cadastro_cliente') }}" class="nav-link">
             <i class="fas fa-user-plus"></i>
-            <span>Cadastro 1</span>
+            <span> Tela de Cadastro</span>
         </a>
-        <a href="/alguma_rota_2" class="nav-link">
+        <a href="{{ url_for('cadastro_propriedade.cadastro_propriedade') }}" class="nav-link"> 
             <i class="fas fa-cog"></i>
-            <span>Opção 2</span>
+            <span>Cadastro Propriedade</span>
         </a>
         <a href="/logout" class="nav-link">
             <i class="fas fa-sign-out-alt"></i>

@@ -105,11 +105,11 @@
         <nav class="nav flex-column">
             <a href="{{ url_for('cadastro_cliente.cadastro_cliente') }}" class="nav-link">
                 <i class="fas fa-user-plus"></i>
-                <span>Cadastro 1</span>
+                <span> Tela de Cadastro</span>
             </a>
-            <a href="/alguma_rota_2" class="nav-link">
+            <a href="{{ url_for('cadastro_propriedade.cadastro_propriedade') }}" class="nav-link"> 
                 <i class="fas fa-cog"></i>
-                <span>Opção 2</span>
+                <span>Cadastro Propriedade</span>
             </a>
             <a href="{{ url_for('menu.menu') }}" class="nav-link">
                 <i class="fas fa-home"></i>
@@ -127,7 +127,7 @@
 <div class="content-wrapper" id="content">
     <div class="wrapper"> 
         <nav class="navbar navbar-expand navbar-light bg-light">
-            <div class="container-fluid">
+            <!--div class="container-fluid">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="#">Home</a>
@@ -136,7 +136,7 @@
                         <a class="nav-link" href="#">Contato</a>
                     </li>
                 </ul>
-            </div>
+            </div-->
         </nav>
     <section class="content">
         <div class="container-fluid">
