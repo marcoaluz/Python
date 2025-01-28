@@ -117,8 +117,8 @@ async def lista_clientes():
 
 
 # Função para normalizar o termo de pesquisa (remover caracteres especiais)
-def normalizar_termo(termo):
-    return re.sub(r'[^0-9a-zA-Z]+', '', termo)  # Remove tudo o que não for número ou letra
+#def normalizar_termo(termo):
+ #   return re.sub(r'[^0-9a-zA-Z]+', '', termo)  # Remove tudo o que não for número ou letra
 
 
 @cadastro_bp.route('/buscar_clientes', methods=['GET'])
@@ -128,11 +128,16 @@ def buscar_clientes():
     if not termo:
         return jsonify([])  # Retorna uma lista vazia se não houver termo
     
-    termo_normalizado = normalizar_termo(termo) 
+  #  termo_normalizado = normalizar_termo(termo) 
 
     # Busca no banco de dados por CPF/CNPJ ou nome que contenham o termo
+<<<<<<< HEAD
     #response = supabase.table('cadastro_cliente').select('*').filter('cpf_cnpj', 'ilike', f"%{termo_normalizado}%").execute()
     response = supabase.table('cadastro_cliente').select('*').ilike('cpf_cnpj', f"%{termo_normalizado}%").execute()
+=======
+   #response = supabase.table('cadastro_cliente').select('*').filter('cpf_cnpj', 'ilike', f"%{termo}%").execute()
+    response = supabase.table('cadastro_cliente').select('*').ilike('cpf_cnpj', f"%{termo}%").execute()
+>>>>>>> 82dce0d5fa897541cb52bb2be22e8b87fc8194a4
     response_nome = supabase.table('cadastro_cliente').select('*').ilike('nome_razaosocial', f"%{termo}%").execute()
 
     # Combina os resultados de ambas as consultas, evitando duplicados

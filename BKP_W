@@ -1,0 +1,525 @@
+{% extends "base.html" %}
+{% block title %}Cadastro de Cliente{% endblock %}
+{% block content %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Clientes</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: auto;
+            padding: 0;
+        }
+    
+        .container {
+            max-width: 1200px; /* Limita a largura máxima */
+            margin: auto;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+    
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: auto;
+            font-size: clamp(1.5rem, 2.5vw, 2.5rem); /* Responsivo */
+        }
+    
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+    
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+    
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+            overflow-wrap: break-word;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    
+        thead th {
+            background-color: #343a40;
+            color: white;
+            font-size: clamp(0.8rem, 1.2vw, 1rem); /* Responsivo */
+        }
+    
+        tbody td {
+            font-size: clamp(0.7rem, 1vw, 0.9rem); /* Responsivo */
+        }
+    
+        tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+    
+        tbody tr:hover {
+            background-color: #e9ecef;
+        }
+    
+        button {
+            margin: 0 5px;
+            font-size: clamp(0.7rem, 1vw, 0.9rem); /* Responsivo */
+        }
+    
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+    
+            table {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+    
+    <script>
+        function formatTelefone(input) {
+            let value = input.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+            if (value.length > 11) value = value.slice(0, 11); // Limita a 11 dígitos
+    
+            if (value.length >= 2) {
+                value = `(${value.slice(0, 2)}) ` + value.slice(2); // Código de área
+            }
+            if (value.length >= 9) {
+                value = value.slice(0, 9) + '-' + value.slice(9); // Hífen no meio do número
+            }
+    
+            input.value = value;
+        }
+    
+        function formatCpfCnpj(input) {
+            let value = input.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+            
+            if (value.length > 14) {
+                value = value.slice(0, 14); // Limita a 14 caracteres numéricos
+            }
+    
+            if (value.length <= 11) {
+                // Formata como CPF
+                input.value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+            } else if (value.length <= 14) {
+                // Formata como CNPJ
+                input.value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+            }
+        }
+    
+        function setTipoCliente() {
+            const cpfCnpj = document.getElementById("cpf_cnpj").value.replace(/\D/g, '');
+            const tipoCliente = document.getElementById("tipo_cliente");
+    
+            if (cpfCnpj.length === 11) {
+                tipoCliente.value = "Física";
+            } else if (cpfCnpj.length === 14) {
+                tipoCliente.value = "Jurídica";
+            } else {
+                tipoCliente.value = ""; // Limpa o campo se não for um CPF ou CNPJ válido
+            }
+        }
+
+   
+    function abrirAlterarModal(cpfCnpj) {
+    // Faz a requisição AJAX para buscar os dados do cliente
+    fetch(`/alterar_cliente/${cpfCnpj}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Cliente não encontrado");
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Preenche os campos do modal com os dados do cliente
+            document.getElementById('nome').value = data.nome_razaosocial;
+            document.getElementById('apelido').value = data.apelido_nomefantasia;
+            document.getElementById('endereco').value = data.endereco;
+            document.getElementById('telefone').value = data.telefone;
+            document.getElementById('email').value = data.email;
+            document.getElementById('cpf_cnpj').value = data.cpf_cnpj;
+            document.getElementById('tipo_cliente').value = data.tipo_cliente;
+
+            // Bloqueia os campos CPF/CNPJ e Tipo de Cliente para edição
+            document.getElementById('cpf_cnpj').setAttribute('readonly', true);
+            document.getElementById('tipo_cliente').setAttribute('readonly', true);
+
+            // Abre o modal
+            const modal = new bootstrap.Modal(document.getElementById('alterarClienteModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error("Erro ao buscar os dados do cliente:", error);
+            alert("Erro ao buscar os dados do cliente.");
+        });
+}
+
+function salvarAlteracoes() {
+    const form = document.getElementById('formAlterarCliente');
+    const formData = new FormData(form);
+
+    fetch(`/alterar_cliente/${document.getElementById('cpf_cnpj').value}`, {
+        method: 'POST',
+        body: new URLSearchParams(formData)
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Erro ao salvar alterações.");
+            }
+            alert("Cliente alterado com sucesso!");
+            location.reload(); // Recarrega a página para refletir as alterações
+        })
+        .catch(error => {
+            console.error("Erro ao salvar alterações:", error);
+            alert("Erro ao salvar alterações.");
+        });
+}
+
+
+    function preencherModal(cpfCnpj, nomeRazao, apelido, endereco, telefone, email, tipoCliente, administrador, status) {
+        document.getElementById('modalCpfCnpj').value = cpfCnpj;
+        document.getElementById('modalNomeRazao').value = nomeRazao;
+        document.getElementById('modalApelido').value = apelido;
+        document.getElementById('modalEndereco').value = endereco;
+        document.getElementById('modalTelefone').value = telefone;
+        document.getElementById('modalEmail').value = email;
+        document.getElementById('modalTipoCliente').value = tipoCliente;
+        document.getElementById('modalAdministrador').value = administrador;
+        document.getElementById('modalStatus').value = status;
+    }
+
+
+    function confirmDelete(cpfCnpj) {
+        // Exibe a caixa de confirmação
+        if (confirm("Tem certeza que deseja excluir este cliente?")) {
+            // Se o usuário clicar em 'Sim', submete o formulário
+            document.getElementById('deleteForm' + cpfCnpj).submit();
+        } else {
+            // Caso contrário, não faz nada
+            return false;
+        }
+    }
+
+ 
+    // Função para normalizar o texto, removendo pontos, traços, espaços e acentos
+function normalizarTexto(texto) {
+    return texto
+        .normalize("NFD") // Remove acentos
+        .replace(/[\u0300-\u036f]/g, "") // Remove marcas de acentuação
+        .replace(/[\.\-\s]/g, '') // Remove pontos, traços e espaços
+        .toLowerCase(); // Converte para minúsculas
+}
+
+// Função para executar a pesquisa em todos os registros
+function executarPesquisa() {
+    const termoPesquisa = normalizarTexto(document.getElementById("campoPesquisa").value.trim());
+    const linhas = document.querySelectorAll("tbody tr");
+
+    linhas.forEach(linha => {
+        const textoLinha = normalizarTexto(linha.textContent);
+        // Exibe a linha se o termo de pesquisa for encontrado em qualquer parte do texto
+        if (textoLinha.includes(termoPesquisa)) {
+            linha.style.display = ""; // Mostra a linha
+        } else {
+            linha.style.display = "none"; // Esconde a linha
+        }
+    });
+}
+
+// Função para detectar Enter no campo de pesquisa
+function verificarTeclaEnter(event) {
+    if (event.key === "Enter") {
+        executarPesquisa();
+    }
+}
+
+
+
+    </script>
+    
+
+    </style>
+    </style>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="container mt-3">
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+
+    <body>
+
+    
+
+
+        
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+                <h2>Gestão de Clientes</h2>
+               
+                <div class="input-group w-50">
+                    <input type="text" id="campoPesquisa" class="form-control" placeholder="Pesquise por CPF ou Nome" oninput="executarPesquisa()" onkeydown="verificarTeclaEnter(event)" />
+                    <button class="btn btn-primary" type="button" onclick="executarPesquisa()">Pesquisar</button>
+                    
+                </div>
+
+                
+
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#cadastroModal">
+                    Novo Cadastro
+                </button>
+
+            </div>
+        
+            {% if clientes %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>CPF/CNPJ</th>
+                            <th>Nome/Razão Social</th>
+                            <th>Apelido/Nome Fantasia</th>
+                            <th>Endereço</th>
+                            <th>Telefone</th>
+                            <th>E-mail</th>
+                            <th>Administrador</th>
+                            <th>Tipo Cliente</th>
+                            <th>Status</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cliente in clientes %}
+                        <tr>
+                            <td>{{ cliente.cpf_cnpj }}</td>
+                            <td>{{ cliente.nome_razaosocial }}</td>
+                            <td>{{ cliente.apelido_nomefantasia }}</td>
+                            <td>{{ cliente.endereco }}</td>
+                            <td>{{ cliente.telefone }}</td>
+                            <td>{{ cliente.email }}</td>
+                            <td>{{ cliente.administrador_alteracao }}</td>
+                            <td>{{ cliente.tipo_cliente }}</td>
+                            <td>{{ cliente.status_cliente }}</td>
+                            <td class="text-center">
+
+                                <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#alterarModal" 
+                                        onclick="preencherModal('{{ cliente.cpf_cnpj }}', '{{ cliente.nome_razaosocial }}', '{{ cliente.apelido_nomefantasia }}', '{{ cliente.endereco }}', '{{ cliente.telefone }}', '{{ cliente.email }}', '{{ cliente.tipo_cliente }}', '{{ cliente.administrador_alteracao }}', '{{ cliente.status_cliente }}')">
+                                    Alterar
+                                </button>
+
+                                <form method="POST" action="{{ url_for('cadastro_cliente.deletar_cliente', cpf_cnpj=cliente.cpf_cnpj) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir este cliente?')">
+                                        Deletar
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center">Não há clientes cadastrados no momento.</div>
+            {% endif %}
+        </div>
+    
+
+
+        
+        <!-- Modal de Cadastro -->
+        <div class="modal fade" id="cadastroModal" tabindex="-1" aria-labelledby="cadastroModalLabel" aria-hidden="true">
+            <!--div class="modal-dialog modal-lg"-->
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="cadastroModalLabel">Novo Cadastro</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <form method="POST" action="{{ url_for('cadastro_cliente.salvar_cliente') }}">
+                            <!--div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="cpfCnpj" class="form-label">CPF/CNPJ</label>
+                                    <input type="text" class="form-control" id="cpfCnpj" name="cpf_cnpj" required>
+                                </div-->
+                                <!--div class="mb-3"-->
+                            <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                    <label for="cpf_cnpj" class="form-label">CPF/CNPJ</label>
+                                    <input type="text" class="form-control" id="cpf_cnpj" name="cpf_cnpj" required 
+                                        oninput="formatCpfCnpj(this); setTipoCliente()">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="nome_razaosocial" class="form-label">Nome/Razão Social</label>
+                                    <input type="text" class="form-control" id="nome_razaosocial" name="nome_razaosocial" required oninput="this.value = this.value.toUpperCase();">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="apelido" class="form-label">Apelido/Nome Fantasia</label>
+                                    <input type="text" class="form-control" id="apelido_nomefantasia" name="apelido_nomefantasia" required oninput="this.value = this.value.toUpperCase();">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="endereco" class="form-label">Endereço</label>
+                                    <input type="text" class="form-control" id="endereco" name="endereco" required oninput="this.value = this.value.toUpperCase();">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="telefone" class="form-label">Telefone</label>
+                                    <input type="text" class="form-control" id="telefone" name="telefone" required 
+                                     oninput="formatTelefone(this)">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label">E-mail</label>
+                                    <input type="email" class="form-control" id="email" name="email" required oninput="this.value = this.value.toUpperCase();">
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="endereco" class="form-label">Administrador</label>
+                                    <input type="text" class="form-control" id="administrador_alteracao" name="administrador_alteracao" required oninput="this.value = this.value.toUpperCase();">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="tipo_cliente" class="form-label">Tipo Cliente</label>
+                                    <input type="text" class="form-control" id="tipo_cliente" name="tipo_cliente" readonly>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="status" class="form-label">Status</label>
+                                    <select class="form-select" id="status" name="status_cliente">
+                                        <option value="Ativo">Ativo</option>
+                                        <option value="Inativo">Inativo</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Salvar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal para Alterar Cliente -->
+  
+        <div class="modal fade" id="alterarModal" tabindex="-1" aria-labelledby="alterarModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="alterarModalLabel">Alterar Cliente</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="POST" action="{{ url_for('cadastro_cliente.alterar_cliente') }}">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="modalCpfCnpj" class="form-label">CPF/CNPJ</label>
+                                <input type="text" class="form-control" id="modalCpfCnpj" name="cpf_cnpj" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label for="modalNomeRazao" class="form-label">Nome/Razão Social</label>
+                                <input type="text" class="form-control" id="modalNomeRazao" name="nome_razaosocial" required oninput="this.value = this.value.toUpperCase();">
+                            </div>
+                            <div class="mb-3">
+                                <label for="modalApelido" class="form-label">Apelido/Nome Fantasia</label>
+                                <input type="text" class="form-control" id="modalApelido" name="apelido_nomefantasia" required oninput="this.value = this.value.toUpperCase();">
+                            </div>
+                            <div class="mb-3">
+                                <label for="modalEndereco" class="form-label">Endereço</label>
+                                <input type="text" class="form-control" id="modalEndereco" name="endereco" required oninput="this.value = this.value.toUpperCase();">
+                            </div>
+                            <div class="mb-3">
+                                <label for="modalTelefone" class="form-label">Telefone</label>
+                                <input type="text" class="form-control" id="modalTelefone" name="telefone" required
+                                oninput="formatTelefone(this)">
+                            </div>
+                            <div class="mb-3">
+                                <label for="modalEmail" class="form-label">E-mail</label>
+                                <input type="email" class="form-control" id="modalEmail" name="email" required oninput="this.value = this.value.toUpperCase();">
+                            </div>
+                            <div class="mb-3">
+                                <label for="modalTipoCliente" class="form-label">Tipo Cliente</label>
+                                <input type="text" class="form-control" id="modalTipoCliente" name="tipo_cliente" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label for="modalAdministrador" class="form-label">Administrador</label>
+                                <input type="text" class="form-control" id="modalAdministrador" name="administrador_alteracao">
+                            </div>
+                            <div class="mb-3">
+                                <label for="modalStatus" class="form-label">Status</label>
+                                <select class="form-select" id="status" name="status_cliente">
+                                    <option value="Ativo">Ativo</option>
+                                    <option value="Inativo">Inativo</option>
+                                </select>
+                                
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+       
+        
+        <nav aria-label="Page navigation">
+            <ul class="pagination">
+                {% if current_page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('cadastro_cliente.lista_clientes', page=current_page-1, query=request.args.get('query', '') ) }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {% endif %}
+            
+                {% for page in range(1, total_pages + 1) %}
+                <li class="page-item {% if page == current_page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('cadastro_cliente.lista_clientes', page=page, query=request.args.get('query', '') ) }}">{{ page }}</a>
+                </li>
+                {% endfor %}
+            
+                {% if current_page < total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('cadastro_cliente.lista_clientes', page=current_page+1, query=request.args.get('query', '') ) }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        
+
+
+                  
+
+
+
+        </body>
+        </html>
+        
+        {% endblock %}        
