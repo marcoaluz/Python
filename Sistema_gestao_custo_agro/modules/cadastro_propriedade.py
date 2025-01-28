@@ -9,9 +9,13 @@ from httpx import Limits, Client
 from tenacity import retry, stop_after_attempt, wait_fixed
 import re
 
+
 from config import SUPABASE_URL, SUPABASE_API_KEY
 
-cadastro_bp  = Blueprint('cadastro_propriedade', __name__)
+
+cadastro_bp = Blueprint('cadastro_propriedade', __name__)
+
+#cadastro_bp  = Blueprint('cadastro_propriedade', __name__)
 
 SUPABASE_PROPERTIES_TABLE = 'cadastro_propriedade'
 supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
@@ -91,7 +95,7 @@ async def fetch_properties(supabase, query=None, page=1, per_page=10):
             'total_pages': 0
         }
 
-@cadastro_bp.route('/lista_propriedades', methods=['GET'])
+@cadastro_bp.route('/lista', methods=['GET'])
 async def lista_propriedades():
     page = int(request.args.get('page', 1))
     query = request.args.get('query', '').strip()
@@ -108,7 +112,7 @@ async def lista_propriedades():
         query=query
     )
 
-@cadastro_bp.route('/salvar_propriedade', methods=['POST'])
+@cadastro_bp.route('/salvar', methods=['POST'])
 def salvar_propriedade():
     id_propriedade = request.form.get('id_propriedade')
     nome_propriedade = request.form.get('nome_propriedade')

@@ -1,57 +1,55 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, Blueprint, jsonify
+from flask import (
+    Flask, 
+    render_template, 
+    request, 
+    redirect, 
+    url_for, 
+    flash, 
+    session, 
+    Blueprint, 
+    jsonify
+)
 from utils import login_required
 from supabase import create_client
 from datetime import datetime
 from math import ceil
 import httpx
 import asyncio
-from httpx import Limits,Client
-from tenacity import retry, stop_after_attempt, wait_fixed
+from httpx import Limits, Client
 import re
-
+from tenacity import retry, stop_after_attempt, wait_fixed
 from config import SUPABASE_URL, SUPABASE_API_KEY
 
+# Blueprint Configuration
 cadastro_bp = Blueprint('cadastro_cliente', __name__)
-
 SUPABASE_USERS_TABLE = 'cadastro_cliente'
 supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
-timeout = httpx.Timeout(10.0)  # Defina o timeout para 10 segundos
+# HTTP Client Configuration
+timeout = httpx.Timeout(10.0)
 client = httpx.Client(timeout=timeout)
-
-# Instanciando Limits corretamente
 limits = Limits(max_connections=10)
-
-# Criando o cliente httpx com a instância de Limits
 client = Client(timeout=timeout, limits=limits)
 
+# Route Handlers
 @cadastro_bp.route('/cadastro_cliente', methods=['GET', 'POST'])
 @login_required
 def cadastro_cliente():
     if 'logged_in' not in session:
         return redirect(url_for('login.login'))
-    
 
-    # Número de itens por página
     items_per_page = 10
-    # Página atual (padrão: 1)
     current_page = int(request.args.get('page', 1))
-
-    # Obter o termo de pesquisa, se houver
     search_query = request.args.get('query', '').strip()
-
-    # Fatiando os dados para a paginação
+    
     start_index = (current_page - 1) * items_per_page
     end_index = start_index + items_per_page
 
-    # Caso haja pesquisa
     if search_query:
         clientes = supabase.table('cadastro_cliente').select('*').like('cpf_cnpj', f"%{search_query}%").range(start_index, end_index).execute()
     else:
-        # Se não houver pesquisa, carrega todos os clientes
         clientes = supabase.table('cadastro_cliente').select('*').range(start_index, end_index).execute()
 
-    # Calcular total de clientes
     total_clients = supabase.table('cadastro_cliente').select('*').like('cpf_cnpj', f"%{search_query}%").execute()
     total_clients_count = len(total_clients.data) if total_clients.data else 0
     total_pages = ceil(total_clients_count / items_per_page)
@@ -63,8 +61,6 @@ def cadastro_cliente():
         total_pages=total_pages,
         search_query=search_query
     )
-
-
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
 async def fetch_clients(supabase, query=None, page=1, per_page=10):
     try:
@@ -92,7 +88,6 @@ async def fetch_clients(supabase, query=None, page=1, per_page=10):
             'current_page': page,
             'total_pages': 0
         }
-    
 
 @cadastro_bp.route('/lista_clientes', methods=['GET'])
 async def lista_clientes():
@@ -112,111 +107,44 @@ async def lista_clientes():
         total_pages=result['total_pages'],
         query=query
     )
-
-
-
-
-# Função para normalizar o termo de pesquisa (remover caracteres especiais)
-#def normalizar_termo(termo):
- #   return re.sub(r'[^0-9a-zA-Z]+', '', termo)  # Remove tudo o que não for número ou letra
-
+def normalizar_termo(termo):
+    return re.sub(r'[^0-9a-zA-Z]+', '', termo)
 
 @cadastro_bp.route('/buscar_clientes', methods=['GET'])
 def buscar_clientes():
     termo = request.args.get('query', '').strip()
-
     if not termo:
-        return jsonify([])  # Retorna uma lista vazia se não houver termo
-    
-  #  termo_normalizado = normalizar_termo(termo) 
+        return jsonify([])
 
-    # Busca no banco de dados por CPF/CNPJ ou nome que contenham o termo
-<<<<<<< HEAD
-    #response = supabase.table('cadastro_cliente').select('*').filter('cpf_cnpj', 'ilike', f"%{termo_normalizado}%").execute()
+    termo_normalizado = normalizar_termo(termo)
     response = supabase.table('cadastro_cliente').select('*').ilike('cpf_cnpj', f"%{termo_normalizado}%").execute()
-=======
-   #response = supabase.table('cadastro_cliente').select('*').filter('cpf_cnpj', 'ilike', f"%{termo}%").execute()
-    response = supabase.table('cadastro_cliente').select('*').ilike('cpf_cnpj', f"%{termo}%").execute()
->>>>>>> 82dce0d5fa897541cb52bb2be22e8b87fc8194a4
-    response_nome = supabase.table('cadastro_cliente').select('*').ilike('nome_razaosocial', f"%{termo}%").execute()
+    response_nome = supabase.table('cadastro_cliente').select('*').ilike('nome_razaosocial', f"%{termo_normalizado}%").execute()
 
-    # Combina os resultados de ambas as consultas, evitando duplicados
     clientes = {cliente['cpf_cnpj']: cliente for cliente in (response.data + response_nome.data)}.values()
-
     return jsonify(list(clientes))
-
-
-
-
 
 @cadastro_bp.route('/alterar_cliente', methods=['POST'])
 def alterar_cliente():
     dados_cliente = request.form.to_dict()
-
+    
     for key in dados_cliente:
         if isinstance(dados_cliente[key], str):
             dados_cliente[key] = dados_cliente[key].upper()
-    # Atualizar a data de alteração
+    
     dados_cliente['data_alteracao'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    # print(dados_cliente)  # Adicionado para debug
+    
     response = supabase.table('cadastro_cliente').update(dados_cliente).eq('cpf_cnpj', dados_cliente['cpf_cnpj']).execute()
-   # print(response)  # Adicionado para verificar a resposta
-
-   
     flash('Cadastro alterado com sucesso!', 'success')
     return redirect(url_for('cadastro_cliente.lista_clientes'))
-
 
 @cadastro_bp.route('/deletar_cliente/<string:cpf_cnpj>', methods=['POST'])
 def deletar_cliente(cpf_cnpj):
     supabase.table('cadastro_cliente').delete().eq('cpf_cnpj', cpf_cnpj).execute()
-    flash("Cliente deletado com sucesso!", "success")
-    return redirect(url_for('cadastro_cliente.cadastro_cliente'))
-
-
-
-# Função para importar clientes via CSV
-@cadastro_bp.route('/importar_csv', methods=['POST'])
-def importar_csv():
-    if 'file' not in request.files:
-        flash('Nenhum arquivo enviado', 'danger')
-        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
-
-    file = request.files['file']
-    if file.filename == '':
-        flash('Nenhum arquivo selecionado', 'danger')
-        return redirect(url_for('cadastro_cliente.cadastro_cliente'))
-
-    csv_file = csv.reader(file)
-    for row in csv_file:
-        cpf_cnpj = row[3]  # Coluna do CPF/CNPJ no CSV
-
-        # Verificar se já existe o CPF/CNPJ
-        response = supabase.table(SUPABASE_USERS_TABLE).select('*').eq('cpf_cnpj', cpf_cnpj).execute()
-        if response.data:
-            flash(f"CPF/CNPJ {cpf_cnpj} já cadastrado. Importação ignorada.", "danger")
-        else:
-            # Inserindo os campos adicionais
-            supabase.table(SUPABASE_USERS_TABLE).insert({
-                'nome_razaosocial': row[0],
-                'apelido_nomefantasia': row[1],
-                'endereco': row[2],
-                'cpf_cnpj': row[3],
-                'telefone': row[4],
-                'email': row[5],
-                'tipo_cliente': row[6],
-                'data_alteracao': None,  # Inicia como None
-                'administrador_alteracao': None,  # Pode ser None
-                'status_cliente': 'Ativo',  # Definindo como 'Ativo'
-                'data_desativacao': None  # Pode ser None
-            }).execute()
-
-    flash('Clientes importados com sucesso!', 'success')
+    flash("Cliente excluído com sucesso!", "success")
     return redirect(url_for('cadastro_cliente.cadastro_cliente'))
 
 @cadastro_bp.route('/salvar_cliente', methods=['POST'])
 def salvar_cliente():
-    # Obtenção de dados do formulário
     nome_razaosocial = request.form.get('nome_razaosocial')
     apelido_nomefantasia = request.form.get('apelido_nomefantasia')
     endereco = request.form.get('endereco')
@@ -226,18 +154,15 @@ def salvar_cliente():
     tipo_cliente = request.form.get('tipo_cliente')
     administrador_alteracao = request.form.get('administrador_alteracao')
 
-    # Verifica se todos os campos obrigatórios foram preenchidos
     if not all([nome_razaosocial, cpf_cnpj, telefone, email, tipo_cliente]):
         flash('Por favor, preencha todos os campos obrigatórios.', 'danger')
         return redirect(url_for('cadastro_cliente.cadastro_cliente'))
 
-    # Verificar se o CPF/CNPJ já está cadastrado
     response = supabase.table(SUPABASE_USERS_TABLE).select('*').eq('cpf_cnpj', cpf_cnpj).execute()
     if response.data:
         flash(f"CPF/CNPJ {cpf_cnpj} já cadastrado. Operação cancelada.", 'danger')
         return redirect(url_for('cadastro_cliente.cadastro_cliente'))
 
-    # Inserir os dados no Supabase
     try:
         supabase.table(SUPABASE_USERS_TABLE).insert({
             'nome_razaosocial': nome_razaosocial,
@@ -247,18 +172,16 @@ def salvar_cliente():
             'telefone': telefone,
             'email': email,
             'tipo_cliente': tipo_cliente,
-            'data_alteracao': None,  # Inicialmente como None
+            'data_alteracao': None,
             'administrador_alteracao': administrador_alteracao,
-            'status_cliente': 'Ativo',  # Status inicial como 'Ativo'
-            'data_desativacao': None  # Nenhuma data de desativação no início
+            'status_cliente': 'Ativo',
+            'data_desativacao': None
         }).execute()
         flash('Cliente salvo com sucesso!', 'success')
     except Exception as e:
         flash(f'Ocorreu um erro ao salvar o cliente: {str(e)}', 'danger')
 
-    # Redireciona de volta para a tela de cadastro
     return redirect(url_for('cadastro_cliente.cadastro_cliente'))
-
 
 if __name__ == '__main__':
     app = Flask(__name__)
