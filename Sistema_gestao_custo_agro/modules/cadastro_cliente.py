@@ -143,7 +143,7 @@ def buscar_clientes():
         termo_normalizado = normalizar_termo(termo)
 
         # is_documento = len(termo_normalizado) in [11, 14]
-,,,,,,,,,,
+        
         # Busca por CPF/CNPJ normalizado e formatado
         response_doc = supabase.table('cadastro_cliente').select('*').or_(
             f"cpf_cnpj.ilike.%{termo_normalizado}%,cpf_cnpj.ilike.%{formatar_cpf_cnpj(termo_normalizado)}%"
