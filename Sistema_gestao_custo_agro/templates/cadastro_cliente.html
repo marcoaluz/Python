@@ -220,61 +220,44 @@ function salvarAlteracoes() {
         }
     }
 
-// Normalizar texto (remove caracteres especiais)
-function normalizarTexto(texto) {
-    return texto.replace(/[\.\-\/]/g, '').trim(); // Remove pontos, traços e barras
+    function limparFormatacao(texto) {
+    return texto.replace(/[^\d]/g, '');
 }
 
-// Detectar tipo de dado (CPF ou CNPJ)
-function detectarTipo(termo) {
-    const apenasNumeros = termo.replace(/\D/g, ''); // Remove tudo que não for número
-    if (apenasNumeros.length === 11) {
-        return 'CPF';
-    } else if (apenasNumeros.length === 14) {
-        return 'CNPJ';
+// Função para formatar CPF/CNPJ
+function formatarDocumento(valor) {
+    valor = limparFormatacao(valor);
+    
+    if (valor.length === 11) {
+        // Formatar como CPF
+        return valor.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    } else if (valor.length === 14) {
+        // Formatar como CNPJ
+        return valor.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
     }
-    return 'Nome'; // Se não for CPF ou CNPJ, tratamos como nome
+    return valor;
 }
 
-// Formatar CPF ou CNPJ dinamicamente
-function formatCpfCnpj(termo) {
-    const apenasNumeros = termo.replace(/\D/g, ''); // Remove tudo que não for número
-    if (apenasNumeros.length === 11) {
-        return apenasNumeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'); // Formato CPF
-    } else if (apenasNumeros.length === 14) {
-        return apenasNumeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5'); // Formato CNPJ
-    }
-    return termo; // Retorna o termo original caso não seja CPF ou CNPJ
-}
-
-// Limitar tamanho do campo para CPF ou CNPJ
-function limitarTamanhoCampo(campo) {
-    let valorAtual = campo.value.replace(/\D/g, ''); // Remove caracteres não numéricos
-    if (valorAtual.length > 14) {
-        valorAtual = valorAtual.slice(0, 14); // Trunca para 14 dígitos
-    }
-    campo.value = valorAtual; // Atualiza o valor do campo
-}
-
-// Pesquisar dinamicamente
+// Função principal de pesquisa
 function pesquisarDinamico() {
     const campoPesquisa = document.getElementById("campoPesquisa");
     let termoPesquisa = campoPesquisa.value.trim();
-
-    // If the search field is empty, restore the original table
+    
+    // Se o campo estiver vazio, restaura a tabela original
     if (termoPesquisa === "") {
         restoreOriginalTable();
         return;
     }
 
-    // Detect type and apply formatting if necessary
-    const tipo = detectarTipo(termoPesquisa);
-    if (tipo === 'CPF' || tipo === 'CNPJ') {
-        limitarTamanhoCampo(campoPesquisa); 
-        termoPesquisa = formatCpfCnpj(campoPesquisa.value);
+    // Remove formatação para comparação
+    const termoLimpo = limparFormatacao(termoPesquisa);
+    
+    // Se for um documento (CPF/CNPJ), formata adequadamente
+    if (termoLimpo.length === 11 || termoLimpo.length === 14) {
+        termoPesquisa = formatarDocumento(termoLimpo);
     }
 
-    // Make request to backend
+    // Faz a requisição para o backend
     fetch(`/buscar_clientes?query=${encodeURIComponent(termoPesquisa)}`)
         .then(response => {
             if (!response.ok) {
@@ -311,7 +294,7 @@ function atualizarTabela(clientes) {
     clientes.forEach(cliente => {
         const linha = document.createElement("tr");
         linha.innerHTML = `
-            <td>${cliente.cpf_cnpj}</td>
+            <td>${formatarDocumento(cliente.cpf_cnpj)}</td>
             <td>${cliente.nome_razaosocial}</td>
             <td>${cliente.apelido_nomefantasia}</td>
             <td>${cliente.endereco}</td>
@@ -341,16 +324,20 @@ function verificarTeclaEnter(event) {
     }
 }
 
-// Adicionar eventos ao campo de pesquisa
-document.getElementById("campoPesquisa").addEventListener("input", function () {
-    const tipo = detectarTipo(this.value);
-    if (tipo === 'CPF' || tipo === 'CNPJ') {
-        limitarTamanhoCampo(this); // Aplica o limitador de tamanho
+// Event listener para o campo de pesquisa
+document.getElementById("campoPesquisa").addEventListener("input", function() {
+    const valor = limparFormatacao(this.value);
+    if (valor.length === 11 || valor.length === 14) {
+        this.value = formatarDocumento(valor);
     }
 });
 
-document.getElementById("campoPesquisa").addEventListener("keypress", verificarTeclaEnter);
-
+// Event listener para tecla Enter
+document.getElementById("campoPesquisa").addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+        pesquisarDinamico();
+    }
+});
 
 
 

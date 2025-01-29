@@ -15,9 +15,9 @@ from datetime import datetime
 from math import ceil
 import httpx
 import asyncio
-from httpx import Limits, Client
+from httpx import Limits, Client, TimeoutException
 import re
-from tenacity import retry, stop_after_attempt, wait_fixed
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 from config import SUPABASE_URL, SUPABASE_API_KEY
 
 # Blueprint Configuration
@@ -25,11 +25,10 @@ cadastro_bp = Blueprint('cadastro_cliente', __name__)
 SUPABASE_USERS_TABLE = 'cadastro_cliente'
 supabase = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
-# HTTP Client Configuration
-timeout = httpx.Timeout(10.0)
-client = httpx.Client(timeout=timeout)
-limits = Limits(max_connections=10)
-client = Client(timeout=timeout, limits=limits)
+# HTTP Client Configuration with increased timeout
+timeout = httpx.Timeout(30.0, connect=10.0)  # Aumentado para 30 segundos
+limits = Limits(max_connections=20, max_keepalive_connections=10)
+client = httpx.Client(timeout=timeout, limits=limits)
 
 # Route Handlers
 @cadastro_bp.route('/cadastro_cliente', methods=['GET', 'POST'])
@@ -107,21 +106,128 @@ async def lista_clientes():
         total_pages=result['total_pages'],
         query=query
     )
+
 def normalizar_termo(termo):
-    return re.sub(r'[^0-9a-zA-Z]+', '', termo)
+    """Normaliza o termo de busca removendo formatação e caracteres especiais"""
+    # Para documentos, remove tudo que não for número
+    if any(c.isdigit() for c in termo):
+        return re.sub(r'[^0-9]', '', termo)
+    # Para nomes, remove caracteres especiais mas mantém espaços
+    return re.sub(r'[^a-zA-Z0-9\s]', '', termo).upper().strip()
+
+def formatar_cpf_cnpj(numero):
+    """Formata um número como CPF ou CNPJ"""
+    numero = re.sub(r'[^0-9]', '', numero)
+    if len(numero) == 11:
+        return f"{numero[:3]}.{numero[3:6]}.{numero[6:9]}-{numero[9:]}"
+    elif len(numero) == 14:
+        return f"{numero[:2]}.{numero[2:5]}.{numero[5:8]}/{numero[8:12]}-{numero[12:]}"
+    return numero
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_fixed(1),
+    retry=retry_if_exception_type((TimeoutException, ConnectionError))
+)
+
+
 
 @cadastro_bp.route('/buscar_clientes', methods=['GET'])
 def buscar_clientes():
-    termo = request.args.get('query', '').strip()
-    if not termo:
-        return jsonify([])
+    try:
+        termo = request.args.get('query', '').strip()
+        if not termo:
+            return jsonify([])
 
-    termo_normalizado = normalizar_termo(termo)
-    response = supabase.table('cadastro_cliente').select('*').ilike('cpf_cnpj', f"%{termo_normalizado}%").execute()
-    response_nome = supabase.table('cadastro_cliente').select('*').ilike('nome_razaosocial', f"%{termo_normalizado}%").execute()
+        # Normaliza o termo de busca
+        termo_normalizado = normalizar_termo(termo)
 
-    clientes = {cliente['cpf_cnpj']: cliente for cliente in (response.data + response_nome.data)}.values()
-    return jsonify(list(clientes))
+        # is_documento = len(termo_normalizado) in [11, 14]
+,,,,,,,,,,
+        # Busca por CPF/CNPJ normalizado e formatado
+        response_doc = supabase.table('cadastro_cliente').select('*').or_(
+            f"cpf_cnpj.ilike.%{termo_normalizado}%,cpf_cnpj.ilike.%{formatar_cpf_cnpj(termo_normalizado)}%"
+        ).execute()
+
+        # Busca por nome
+        response_nome = supabase.table('cadastro_cliente').select('*').ilike(
+            'nome_razaosocial', f"%{termo_normalizado}%"
+        ).execute()
+
+        # Combina e remove duplicatas
+        clientes = {
+            cliente['cpf_cnpj']: cliente 
+            for cliente in (response_doc.data + response_nome.data)
+        }.values()
+
+        # Formata CPF/CNPJ nos resultados
+        clientes_formatados = []
+        for cliente in clientes:
+            cliente_copy = dict(cliente)
+            cliente_copy['cpf_cnpj'] = formatar_cpf_cnpj(cliente['cpf_cnpj'])
+            clientes_formatados.append(cliente_copy)
+
+        return jsonify(clientes_formatados)
+
+    except TimeoutException as e:
+        print(f"Timeout error: {str(e)}")
+        return jsonify({
+            'error': 'Tempo limite de conexão excedido. Por favor, tente novamente.'
+        }), 504
+
+    except Exception as e:
+        print(f"Error in buscar_clientes: {str(e)}")
+        return jsonify({
+            'error': 'Erro ao processar a busca. Por favor, tente novamente.'
+        }), 500
+
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
+async def fetch_clients(supabase, query=None, page=1, per_page=10):
+    try:
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page - 1
+
+        # Se houver query, busca com termo normalizado
+        if query:
+            termo_normalizado = normalizar_termo(query)
+            response = supabase.table('cadastro_cliente').select('*').or_(
+                f"cpf_cnpj.ilike.%{termo_normalizado}%,"
+                f"nome_razaosocial.ilike.%{termo_normalizado}%"
+            ).range(start_index, end_index).execute()
+        else:
+            response = supabase.table('cadastro_cliente').select('*').range(
+                start_index, end_index
+            ).execute()
+
+        # Conta total de registros
+        total_clientes_response = supabase.table('cadastro_cliente').select(
+            'cpf_cnpj', count='exact'
+        ).execute()
+        
+        total_clientes = len(total_clientes_response.data) if total_clientes_response.data else 0
+        total_pages = ceil(total_clientes / per_page)
+
+        # Formata CPF/CNPJ nos resultados
+        clientes_formatados = []
+        for cliente in (response.data or []):
+            cliente_copy = dict(cliente)
+            cliente_copy['cpf_cnpj'] = formatar_cpf_cnpj(cliente['cpf_cnpj'])
+            clientes_formatados.append(cliente_copy)
+
+        return {
+            'clientes': clientes_formatados,
+            'current_page': page,
+            'total_pages': total_pages
+        }
+
+    except Exception as e:
+        print(f"Error fetching clients: {e}")
+        return {
+            'clientes': [],
+            'current_page': page,
+            'total_pages': 0,
+            'error': str(e)
+        }
 
 @cadastro_bp.route('/alterar_cliente', methods=['POST'])
 def alterar_cliente():
