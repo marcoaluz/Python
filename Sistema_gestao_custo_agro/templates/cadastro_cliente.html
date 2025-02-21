@@ -238,21 +238,20 @@ function formatarDocumento(valor) {
     return valor;
 }
 
-// Função principal de pesquisa
 function pesquisarDinamico() {
     const campoPesquisa = document.getElementById("campoPesquisa");
     let termoPesquisa = campoPesquisa.value.trim();
     
-    // Se o campo estiver vazio, restaura a tabela original
+    // Se o campo estiver vazio, recarrega a página
     if (termoPesquisa === "") {
-        restoreOriginalTable();
+        location.reload();
         return;
     }
 
     // Remove formatação para comparação
     const termoLimpo = limparFormatacao(termoPesquisa);
     
-    // Se for um documento (CPF/CNPJ), formata adequadamente
+    // Se for um CPF/CNPJ completo (11 ou 14 dígitos), formata adequadamente
     if (termoLimpo.length === 11 || termoLimpo.length === 14) {
         termoPesquisa = formatarDocumento(termoLimpo);
     }
@@ -270,21 +269,31 @@ function pesquisarDinamico() {
         })
         .catch(error => {
             console.error("Erro ao buscar clientes:", error);
+            alert("Erro ao realizar a busca. Por favor, tente novamente.");
         });
 }
 
-// New function to restore the original table
-function restoreOriginalTable() {
-    // Reload the page to restore original data
-    location.reload();
+// Função para limpar formatação (mantém apenas números)
+function limparFormatacao(texto) {
+    return texto.replace(/[^\d]/g, '');
 }
 
-// Atualizar tabela com os resultados
+// Função para formatar CPF/CNPJ
+function formatarDocumento(valor) {
+    if (valor.length === 11) {
+        return valor.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    } else if (valor.length === 14) {
+        return valor.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
+    return valor;
+}
+
+// Função para atualizar a tabela com os resultados
 function atualizarTabela(clientes) {
     const tbody = document.querySelector("tbody");
     tbody.innerHTML = ""; // Limpa a tabela
 
-    if (clientes.length === 0) {
+    if (!clientes || clientes.length === 0) {
         const linhaVazia = document.createElement("tr");
         linhaVazia.innerHTML = `<td colspan="10" class="text-center">Nenhum cliente encontrado.</td>`;
         tbody.appendChild(linhaVazia);
@@ -294,7 +303,7 @@ function atualizarTabela(clientes) {
     clientes.forEach(cliente => {
         const linha = document.createElement("tr");
         linha.innerHTML = `
-            <td>${formatarDocumento(cliente.cpf_cnpj)}</td>
+            <td>${cliente.cpf_cnpj}</td>
             <td>${cliente.nome_razaosocial}</td>
             <td>${cliente.apelido_nomefantasia}</td>
             <td>${cliente.endereco}</td>
@@ -308,35 +317,34 @@ function atualizarTabela(clientes) {
                         onclick="preencherModal('${cliente.cpf_cnpj}', '${cliente.nome_razaosocial}', '${cliente.apelido_nomefantasia}', '${cliente.endereco}', '${cliente.telefone}', '${cliente.email}', '${cliente.tipo_cliente}', '${cliente.administrador_alteracao}', '${cliente.status_cliente}')">
                     Alterar
                 </button>
-                <form method="POST" action="/cadastro_cliente/deletar_cliente/${cliente.cpf_cnpj}" class="d-inline">
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir este cliente?')">Deletar</button>
-                </form>
+                <button class="btn btn-sm btn-danger" onclick="confirmDelete('${cliente.cpf_cnpj}')">
+                    Deletar
+                </button>
             </td>
         `;
         tbody.appendChild(linha);
     });
 }
 
-// Detectar Enter no campo de pesquisa
-function verificarTeclaEnter(event) {
-    if (event.key === "Enter") {
-        pesquisarDinamico();
-    }
-}
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const campoPesquisa = document.getElementById("campoPesquisa");
+    
+    // Listener para tecla Enter
+    campoPesquisa.addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            pesquisarDinamico();
+        }
+    });
 
-// Event listener para o campo de pesquisa
-document.getElementById("campoPesquisa").addEventListener("input", function() {
-    const valor = limparFormatacao(this.value);
-    if (valor.length === 11 || valor.length === 14) {
-        this.value = formatarDocumento(valor);
-    }
-});
-
-// Event listener para tecla Enter
-document.getElementById("campoPesquisa").addEventListener("keypress", function(event) {
-    if (event.key === "Enter") {
-        pesquisarDinamico();
-    }
+    // Listener para input
+    campoPesquisa.addEventListener("input", function() {
+        const valor = limparFormatacao(this.value);
+        if (valor.length === 11 || valor.length === 14) {
+            this.value = formatarDocumento(valor);
+            pesquisarDinamico(); // Pesquisa automática quando CPF/CNPJ está completo
+        }
+    });
 });
 
 
@@ -368,27 +376,22 @@ document.getElementById("campoPesquisa").addEventListener("keypress", function(e
 
 
         
-            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
-                <h2>Gestão de Clientes</h2>
-                
-
-
-                <div class="input-group w-50">
-                    <input 
-                        type="text" 
-                        id="campoPesquisa" 
-                        class="form-control" 
-                        placeholder="Pesquise por CPF ou Nome DINAMICO" 
-                        oninput="pesquisarDinamico()" onkeydown="verificarTeclaEnter(event)"
-                        />
-                </div>
-                
-
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#cadastroModal">
-                    Novo Cadastro
-                </button>
-
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+            <h2>Gestão de Clientes</h2>
+            
+            <div class="input-group w-50">
+                <input 
+                    type="text" 
+                    id="campoPesquisa" 
+                    class="form-control" 
+                    placeholder="Pesquise por CPF/CNPJ ou Nome" 
+                />
             </div>
+        
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#cadastroModal">
+                Novo Cadastro
+            </button>
+        </div>
         
             {% if clientes %}
             <div class="table-responsive">

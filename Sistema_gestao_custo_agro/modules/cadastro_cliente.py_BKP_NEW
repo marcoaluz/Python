@@ -1,0 +1,289 @@
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from utils import login_required
+from supabase import create_client, Client
+from datetime import datetime
+from math import ceil
+import re
+from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from email_validator import validate_email, EmailNotValidError
+from tenacity import retry, stop_after_attempt, wait_fixed
+from config import SUPABASE_URL, SUPABASE_API_KEY
+# Classes para validação e tipagem
+@dataclass
+class ClienteData:
+    nome_razaosocial: str
+    apelido_nomefantasia: str
+    endereco: str
+    cpf_cnpj: str
+    telefone: str
+    email: str
+    tipo_cliente: str
+    administrador_alteracao: str
+    status_cliente: str = "Ativo"
+    data_alteracao: Optional[str] = None
+    data_desativacao: Optional[str] = None
+
+class ClienteValidator:
+    @staticmethod
+    def validar_cpf(cpf: str) -> bool:
+        cpf = re.sub(r'[^0-9]', '', cpf)
+        if len(cpf) != 11:
+            return False
+        if cpf == cpf[0] * 11:
+            return False
+        
+        for i in range(9, 11):
+            valor = sum((int(cpf[num]) * ((i + 1) - num) for num in range(0, i)))
+            digito = ((valor * 10) % 11) % 10
+            if int(cpf[i]) != digito:
+                return False
+        return True
+
+    @staticmethod
+    def validar_cnpj(cnpj: str) -> bool:
+        cnpj = re.sub(r'[^0-9]', '', cnpj)
+        if len(cnpj) != 14:
+            return False
+        if cnpj == cnpj[0] * 14:
+            return False
+
+        multiplicadores1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+        multiplicadores2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+
+        for i in range(12, 14):
+            soma = sum(int(cnpj[num]) * mult for num, mult in 
+                      enumerate(multiplicadores1 if i == 12 else multiplicadores2))
+            digito = (soma % 11)
+            if digito < 2:
+                digito = 0
+            else:
+                digito = 11 - digito
+            if int(cnpj[i]) != digito:
+                return False
+        return True
+
+    @staticmethod
+    def validar_telefone(telefone: str) -> bool:
+        telefone = re.sub(r'[^0-9]', '', telefone)
+        return len(telefone) >= 10 and len(telefone) <= 11
+
+    @staticmethod
+    def validar_email(email: str) -> bool:
+        try:
+            validate_email(email)
+            return True
+        except EmailNotValidError:
+            return False
+
+    @classmethod
+    def validar_cliente(cls, dados: ClienteData) -> Tuple[bool, List[str]]:
+        erros = []
+        
+        # Validação de CPF/CNPJ
+        doc = re.sub(r'[^0-9]', '', dados.cpf_cnpj)
+        if len(doc) == 11:
+            if not cls.validar_cpf(doc):
+                erros.append("CPF inválido")
+        elif len(doc) == 14:
+            if not cls.validar_cnpj(doc):
+                erros.append("CNPJ inválido")
+        else:
+            erros.append("Documento deve ser CPF ou CNPJ válido")
+
+        # Outras validações
+        if not dados.nome_razaosocial.strip():
+            erros.append("Nome/Razão Social é obrigatório")
+        if not cls.validar_telefone(dados.telefone):
+            erros.append("Telefone inválido")
+        if not cls.validar_email(dados.email):
+            erros.append("Email inválido")
+        if dados.tipo_cliente not in ["Física", "Jurídica"]:
+            erros.append("Tipo de cliente inválido")
+        
+        return not bool(erros), erros
+
+# Blueprint e configuração do Supabase
+cadastro_cliente_bp  = Blueprint('cadastro_cliente', __name__)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_API_KEY)
+
+# Funções auxiliares
+def formatar_cpf_cnpj(numero: str) -> str:
+    numero = re.sub(r'[^0-9]', '', numero)
+    if len(numero) == 11:
+        return f"{numero[:3]}.{numero[3:6]}.{numero[6:9]}-{numero[9:]}"
+    elif len(numero) == 14:
+        return f"{numero[:2]}.{numero[2:5]}.{numero[5:8]}/{numero[8:12]}-{numero[12:]}"
+    return numero
+
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
+def fetch_clients(query: Optional[str] = None, page: int = 1, per_page: int = 10) -> Dict:
+    try:
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page - 1
+
+        # Busca com query normalizada
+        if query:
+            termo = re.sub(r'[^0-9a-zA-Z\s]', '', query).upper()
+            response = supabase.table('cadastro_cliente').select('*').or_(
+                f"cpf_cnpj.ilike.%{termo}%,"
+                f"nome_razaosocial.ilike.%{termo}%"
+            ).range(start_index, end_index).execute()
+        else:
+            response = supabase.table('cadastro_cliente').select('*').range(
+                start_index, end_index
+            ).execute()
+
+        # Contagem total
+        total = supabase.table('cadastro_cliente').select('*', count='exact').execute()
+        total_count = len(total.data) if total.data else 0
+
+        # Formata documentos 
+        clientes = []
+        for cliente in (response.data or []):
+            cliente['cpf_cnpj'] = formatar_cpf_cnpj(cliente['cpf_cnpj'])
+            clientes.append(cliente)
+
+        return {
+            'clientes': clientes,
+            'total_pages': ceil(total_count / per_page),
+            'current_page': page
+        }
+
+    except Exception as e:
+        print(f"Erro ao buscar clientes: {e}")
+        return {'clientes': [], 'total_pages': 0, 'current_page': page}
+
+# Rotas
+@cadastro_cliente_bp.route('/cadastro_cliente', methods=['GET'])
+@login_required
+def cadastro_cliente():
+    if 'logged_in' not in session:
+        return redirect(url_for('login.login'))
+
+    page = int(request.args.get('page', 1))
+    search = request.args.get('query', '').strip()
+    result = fetch_clients(search, page)
+
+    return render_template(
+        'cadastro_cliente.html',
+        clientes=result['clientes'],
+        current_page=result['current_page'],
+        total_pages=result['total_pages'],
+        search_query=search
+    )
+
+@cadastro_cliente_bp.route('/buscar_clientes', methods=['GET'])
+@login_required
+def buscar_clientes():
+    try:
+        termo = request.args.get('query', '').strip()
+        if not termo:
+            return jsonify([])
+
+        # Busca com termo normalizado
+        termo_norm = re.sub(r'[^0-9a-zA-Z\s]', '', termo).upper()
+        response = supabase.table('cadastro_cliente').select('*').or_(
+            f"cpf_cnpj.ilike.%{termo_norm}%,"
+            f"nome_razaosocial.ilike.%{termo_norm}%"
+        ).execute()
+
+        # Formata resultados
+        clientes = []
+        for cliente in (response.data or []):
+            cliente['cpf_cnpj'] = formatar_cpf_cnpj(cliente['cpf_cnpj'])
+            clientes.append(cliente)
+
+        return jsonify(clientes)
+
+    except Exception as e:
+        print(f"Erro na busca: {e}")
+        return jsonify({'error': 'Erro ao processar busca'}), 500
+
+@cadastro_cliente_bp.route('/salvar_cliente', methods=['POST'])
+@login_required
+def salvar_cliente():   
+    try:
+        dados = ClienteData(
+            nome_razaosocial=request.form['nome_razaosocial'].upper(),
+            apelido_nomefantasia=request.form['apelido_nomefantasia'].upper(),
+            endereco=request.form['endereco'].upper(),
+            cpf_cnpj=request.form['cpf_cnpj'],
+            telefone=request.form['telefone'],
+            email=request.form['email'].upper(),
+            tipo_cliente=request.form['tipo_cliente'],
+            administrador_alteracao=request.form['administrador_alteracao'].upper()
+        )
+
+        # Validação
+        valido, erros = ClienteValidator.validar_cliente(dados)
+        if not valido:
+            flash(f"Erro de validação: {', '.join(erros)}", 'danger')
+            return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
+        # Verifica duplicidade
+        doc_norm = re.sub(r'[^0-9]', '', dados.cpf_cnpj)
+        existing = supabase.table('cadastro_cliente').select('*').eq('cpf_cnpj', doc_norm).execute()
+        if existing.data:
+            flash(f"CPF/CNPJ {dados.cpf_cnpj} já cadastrado", 'danger')
+            return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
+        # Salva no banco
+        supabase.table('cadastro_cliente').insert(dados.__dict__).execute()
+        flash('Cliente cadastrado com sucesso!', 'success')
+
+    except Exception as e:
+        flash(f'Erro ao salvar cliente: {str(e)}', 'danger')
+
+    return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
+@cadastro_cliente_bp.route('/alterar_cliente', methods=['POST'])
+@login_required
+def alterar_cliente():
+    try:
+        dados = ClienteData(
+            nome_razaosocial=request.form['nome_razaosocial'].upper(),
+            apelido_nomefantasia=request.form['apelido_nomefantasia'].upper(),
+            endereco=request.form['endereco'].upper(),
+            cpf_cnpj=request.form['cpf_cnpj'],
+            telefone=request.form['telefone'],
+            email=request.form['email'].upper(),
+            tipo_cliente=request.form['tipo_cliente'],
+            administrador_alteracao=request.form['administrador_alteracao'].upper(),
+            status_cliente=request.form['status_cliente'],
+            data_alteracao=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        )
+
+        # Validação
+        valido, erros = ClienteValidator.validar_cliente(dados)
+        if not valido:
+            flash(f"Erro de validação: {', '.join(erros)}", 'danger')
+            return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
+        # Atualiza no banco
+        supabase.table('cadastro_cliente').update(
+            dados.__dict__
+        ).eq('cpf_cnpj', dados.cpf_cnpj).execute()
+        
+        flash('Cliente atualizado com sucesso!', 'success')
+
+    except Exception as e:
+        flash(f'Erro ao atualizar cliente: {str(e)}', 'danger')
+
+    return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
+@cadastro_cliente_bp.route('/deletar_cliente/<string:cpf_cnpj>', methods=['POST'])
+@login_required
+def deletar_cliente(cpf_cnpj: str):
+    try:
+        supabase.table('cadastro_cliente').delete().eq('cpf_cnpj', cpf_cnpj).execute()
+        flash('Cliente excluído com sucesso!', 'success')
+    except Exception as e:
+        flash(f'Erro ao excluir cliente: {str(e)}', 'danger')
+    
+    return redirect(url_for('cadastro_cliente.cadastro_cliente'))
+
+if __name__ == '__main__':
+    app = Flask(__name__)
+    app.register_blueprint(cadastro_cliente_bp)
+    app.run(debug=True)

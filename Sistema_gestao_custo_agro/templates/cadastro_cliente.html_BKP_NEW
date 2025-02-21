@@ -1,0 +1,799 @@
+{% extends "base.html" %}
+{% block title %}Gestão de Clientes{% endblock %}
+
+{% block content %}
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Clientes</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <!-- SweetAlert2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
+            --success-color: #198754;
+            --danger-color: #dc3545;
+            --light-bg: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Visualização -->
+    <div class="modal fade" id="visualizacaoModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalhes do Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3" id="detalhesCliente">
+                        <!-- Preenchido via JavaScript -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://kit.fontawesome.com/your-code.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        // Variáveis globais
+        let dataTable;
+        const modals = {
+            cadastro: new bootstrap.Modal(document.getElementById('cadastroModal')),
+            edicao: new bootstrap.Modal(document.getElementById('edicaoModal')),
+            visualizacao: new bootstrap.Modal(document.getElementById('visualizacaoModal'))
+        };
+
+        // Funções de formatação
+        function formatarDocumento(input) {
+            let valor = input.value.replace(/\D/g, '');
+            if (valor.length <= 11) {
+                // CPF
+                valor = valor.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+            } else {
+                // CNPJ
+                valor = valor.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+            }
+            input.value = valor;
+        }
+
+        function formatarTelefone(input) {
+            let valor = input.value.replace(/\D/g, '');
+            if (valor.length <= 11) {
+                if (valor.length > 2) {
+                    valor = `(${valor.substring(0,2)}) ${valor.substring(2)}`;
+                }
+                if (valor.length > 10) {
+                    valor = valor.replace(/(.{10})(.*)/, '$1-$2');
+                }
+            }
+            input.value = valor;
+        }
+
+        function setTipoCliente(input) {
+            const doc = input.value.replace(/\D/g, '');
+            const tipoInput = input.form.querySelector('[name="tipo_cliente"]');
+            tipoInput.value = doc.length === 11 ? 'Física' : doc.length === 14 ? 'Jurídica' : '';
+        }
+
+        // Validações
+        function validarCPF(cpf) {
+            cpf = cpf.replace(/\D/g, '');
+            if (cpf.length !== 11) return false;
+            
+            let soma = 0;
+            let resto;
+            
+            if (cpf === "00000000000") return false;
+            
+            for (let i = 1; i <= 9; i++) {
+                soma = soma + parseInt(cpf.substring(i-1, i)) * (11 - i);
+            }
+            
+            resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            if (resto !== parseInt(cpf.substring(9, 10))) return false;
+            
+            soma = 0;
+            for (let i = 1; i <= 10; i++) {
+                soma = soma + parseInt(cpf.substring(i-1, i)) * (12 - i);
+            }
+            
+            resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            if (resto !== parseInt(cpf.substring(10, 11))) return false;
+            
+            return true;
+        }
+
+        function validarCNPJ(cnpj) {
+            cnpj = cnpj.replace(/\D/g, '');
+            if (cnpj.length !== 14) return false;
+            
+            if (/^(\d)\1+$/.test(cnpj)) return false;
+            
+            let tamanho = cnpj.length - 2;
+            let numeros = cnpj.substring(0, tamanho);
+            let digitos = cnpj.substring(tamanho);
+            let soma = 0;
+            let pos = tamanho - 7;
+            
+            for (let i = tamanho; i >= 1; i--) {
+                soma += numeros.charAt(tamanho - i) * pos--;
+                if (pos < 2) pos = 9;
+            }
+            
+            let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+            if (resultado !== parseInt(digitos.charAt(0))) return false;
+            
+            tamanho = tamanho + 1;
+            numeros = cnpj.substring(0, tamanho);
+            soma = 0;
+            pos = tamanho - 7;
+            
+            for (let i = tamanho; i >= 1; i--) {
+                soma += numeros.charAt(tamanho - i) * pos--;
+                if (pos < 2) pos = 9;
+            }
+            
+            resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+            if (resultado !== parseInt(digitos.charAt(1))) return false;
+            
+            return true;
+        }
+
+        function validarEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        function validarFormulario(form) {
+            let valido = true;
+            const doc = form.querySelector('[name="cpf_cnpj"]').value.replace(/\D/g, '');
+            
+            // Validação de CPF/CNPJ
+            if (doc.length === 11 && !validarCPF(doc)) {
+                form.querySelector('[name="cpf_cnpj"]').classList.add('is-invalid');
+                valido = false;
+            } else if (doc.length === 14 && !validarCNPJ(doc)) {
+                form.querySelector('[name="cpf_cnpj"]').classList.add('is-invalid');
+                valido = false;
+            }
+
+            // Validação de email
+            const email = form.querySelector('[name="email"]');
+            if (!validarEmail(email.value)) {
+                email.classList.add('is-invalid');
+                valido = false;
+            }
+
+            // Validação de telefone
+            const telefone = form.querySelector('[name="telefone"]').value.replace(/\D/g, '');
+            if (telefone.length < 10 || telefone.length > 11) {
+                form.querySelector('[name="telefone"]').classList.add('is-invalid');
+                valido = false;
+            }
+
+            return valido;
+        }
+
+        // Função para carregar dados no modal de edição
+        async function editarCliente(cpfCnpj) {
+            try {
+                const cliente = await buscarCliente(cpfCnpj);
+                if (!cliente) return;
+
+                const form = document.getElementById('formEdicao');
+                
+                // Preenche os campos com os dados do cliente
+                form.querySelector('[name="cpf_cnpj"]').value = cliente.cpf_cnpj;
+                form.querySelector('[name="nome_razaosocial"]').value = cliente.nome_razaosocial;
+                form.querySelector('[name="apelido_nomefantasia"]').value = cliente.apelido_nomefantasia;
+                form.querySelector('[name="endereco"]').value = cliente.endereco;
+                form.querySelector('[name="telefone"]').value = cliente.telefone;
+                form.querySelector('[name="email"]').value = cliente.email;
+                form.querySelector('[name="tipo_cliente"]').value = cliente.tipo_cliente;
+                form.querySelector('[name="administrador_alteracao"]').value = cliente.administrador_alteracao;
+                form.querySelector('[name="status_cliente"]').value = cliente.status_cliente;
+
+                // Abre o modal de edição
+                modals.edicao.show();
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                mostrarErro('Erro ao carregar dados do cliente');
+            }
+        }
+
+        // Função para visualizar cliente
+        async function visualizarCliente(cpfCnpj) {
+            try {
+                const cliente = await buscarCliente(cpfCnpj);
+                if (!cliente) return;
+
+                // Prepara o HTML com os detalhes do cliente
+                const detalhesHtml = `
+                    <div class="col-md-6">
+                        <p><strong>CPF/CNPJ:</strong> ${cliente.cpf_cnpj}</p>
+                        <p><strong>Nome/Razão Social:</strong> ${cliente.nome_razaosocial}</p>
+                        <p><strong>Nome Fantasia:</strong> ${cliente.apelido_nomefantasia || '-'}</p>
+                        <p><strong>Tipo:</strong> ${cliente.tipo_cliente}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Telefone:</strong> ${cliente.telefone}</p>
+                        <p><strong>Email:</strong> ${cliente.email}</p>
+                        <p><strong>Status:</strong> ${cliente.status_cliente}</p>
+                        <p><strong>Última Alteração:</strong> ${cliente.data_alteracao || 'Não registrada'}</p>
+                    </div>
+                    <div class="col-12">
+                        <p><strong>Endereço:</strong> ${cliente.endereco}</p>
+                    </div>
+                `;
+
+                document.getElementById('detalhesCliente').innerHTML = detalhesHtml;
+                modals.visualizacao.show();
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                mostrarErro('Erro ao carregar dados do cliente');
+            }
+        }
+
+        // Funções CRUD
+        async function buscarCliente(cpfCnpj) {
+            try {
+                const response = await fetch(`/buscar_clientes?query=${cpfCnpj}`);
+                if (!response.ok) throw new Error('Erro ao buscar cliente');
+                const data = await response.json();
+                return data[0];
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarErro('Erro ao buscar dados do cliente');
+                return null;
+            }
+        }
+
+        async function salvarCliente(formData) {
+            try {
+                const response = await fetch('/salvar_cliente', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('Erro ao salvar cliente');
+                
+                await mostrarSucesso('Cliente salvo com sucesso!');
+                location.reload();
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarErro('Erro ao salvar cliente');
+            }
+        }
+
+        async function atualizarCliente(formData) {
+            try {
+                const response = await fetch('/alterar_cliente', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('Erro ao atualizar cliente');
+                
+                await mostrarSucesso('Cliente atualizado com sucesso!');
+                location.reload();
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarErro('Erro ao atualizar cliente');
+            }
+        }
+
+        async function excluirCliente(cpfCnpj) {
+            try {
+                const response = await fetch(`/deletar_cliente/${cpfCnpj}`, {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) throw new Error('Erro ao excluir cliente');
+                
+                await mostrarSucesso('Cliente excluído com sucesso!');
+                location.reload();
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarErro('Erro ao excluir cliente');
+            }
+        }
+
+        // Funções de UI
+        function mostrarSucesso(mensagem) {
+            return Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: mensagem,
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }
+
+        function mostrarErro(mensagem) {
+            return Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: mensagem
+            });
+        }
+
+        async function confirmarExclusao(cpfCnpj) {
+            const result = await Swal.fire({
+                title: 'Confirmação',
+                text: 'Deseja realmente excluir este cliente?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sim, excluir',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (result.isConfirmed) {
+                await excluirCliente(cpfCnpj);
+            }
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicialização do DataTable
+            dataTable = new DataTable('#clientesTable', {
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
+                },
+                pageLength: 10,
+                order: [[1, 'asc']],
+                columnDefs: [
+                    { orderable: false, targets: -1 }
+                ]
+            });
+
+            // Handler para o formulário de edição
+            document.getElementById('formEdicao').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                if (!validarFormulario(this)) return;
+
+                const formData = new FormData(this);
+                await atualizarCliente(formData);
+                modals.edicao.hide();
+            });
+
+            // Limpeza de formulários ao fechar modais
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('hidden.bs.modal', function() {
+                    this.querySelector('form')?.reset();
+                    this.querySelectorAll('.is-invalid').forEach(el => {
+                        el.classList.remove('is-invalid');
+                    });
+                });
+            });
+
+            // Busca dinâmica
+            const searchInput = document.getElementById('searchInput');
+            let searchTimeout;
+
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    dataTable.search(this.value).draw();
+                }, 300);
+            });
+        });
+    </script>
+</body>
+</html>
+{% endblock %}(--light-bg);
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 25px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .table-container {
+            margin-top: 20px;
+            overflow-x: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .table {
+            margin-bottom: 0;
+            vertical-align: middle;
+        }
+
+        .table thead th {
+            background-color: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .table tbody tr:hover {
+            background-color: rgba(13, 110, 253, 0.05);
+        }
+
+        .btn {
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-control, .form-select {
+            border-radius: 6px;
+            padding: 10px 15px;
+            border: 1px solid #ced4da;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+
+        .search-container {
+            position: relative;
+            max-width: 400px;
+            margin: 20px 0;
+        }
+
+        .search-container .form-control {
+            padding-right: 40px;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+
+        .invalid-feedback {
+            font-size: 0.85rem;
+            color: var(--danger-color);
+            margin-top: 4px;
+        }
+
+        .pagination {
+            margin: 20px 0 0;
+            justify-content: center;
+        }
+
+        .modal-content {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            border-bottom: 2px solid #f0f0f0;
+            padding: 20px;
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .modal-footer {
+            border-top: 2px solid #f0f0f0;
+            padding: 20px;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+                margin: 10px;
+            }
+
+            .btn {
+                padding: 6px 12px;
+                font-size: 0.9rem;
+            }
+
+            .table thead th {
+                font-size: 0.8rem;
+            }
+
+            .table tbody td {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Header e Busca -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+            <h2 class="mb-4">Gestão de Clientes</h2>
+            <div class="d-flex gap-3 align-items-center">
+                <div class="search-container">
+                    <input type="text" id="searchInput" class="form-control" 
+                           placeholder="Buscar por CPF/CNPJ ou nome..." 
+                           aria-label="Buscar">
+                    <i class="fas fa-search search-icon"></i>
+                </div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cadastroModal">
+                    <i class="fas fa-plus me-2"></i>Novo Cliente
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabela de Clientes -->
+        <div class="table-container">
+            <table class="table table-hover" id="clientesTable">
+                <thead>
+                    <tr>
+                        <th>CPF/CNPJ</th>
+                        <th>Nome/Razão Social</th>
+                        <th>Nome Fantasia</th>
+                        <th>Telefone</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cliente in clientes %}
+                    <tr>
+                        <td>{{ cliente.cpf_cnpj }}</td>
+                        <td>{{ cliente.nome_razaosocial }}</td>
+                        <td>{{ cliente.apelido_nomefantasia }}</td>
+                        <td>{{ cliente.telefone }}</td>
+                        <td>{{ cliente.email }}</td>
+                        <td>
+                            <span class="badge {% if cliente.status_cliente == 'Ativo' %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ cliente.status_cliente }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm btn-info me-2" 
+                                        onclick="visualizarCliente('{{ cliente.cpf_cnpj }}')"
+                                        title="Visualizar">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-warning me-2" 
+                                        onclick="editarCliente('{{ cliente.cpf_cnpj }}')"
+                                        title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" 
+                                        onclick="confirmarExclusao('{{ cliente.cpf_cnpj }}')"
+                                        title="Excluir">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        <nav aria-label="Navegação de páginas">
+            <ul class="pagination justify-content-center">
+                {% if current_page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('cadastro_cliente.lista_clientes', page=current_page-1) }}">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for page in range(1, total_pages + 1) %}
+                <li class="page-item {% if page == current_page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('cadastro_cliente.lista_clientes', page=page) }}">
+                        {{ page }}
+                    </a>
+                </li>
+                {% endfor %}
+
+                {% if current_page < total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('cadastro_cliente.lista_clientes', page=current_page+1) }}">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Modal de Cadastro -->
+    <div class="modal fade" id="cadastroModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Novo Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <form id="formCadastro" onsubmit="return validarFormulario(this)">
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">CPF/CNPJ*</label>
+                                <input type="text" class="form-control" name="cpf_cnpj" required
+                                       onkeyup="formatarDocumento(this); setTipoCliente(this);">
+                                <div class="invalid-feedback">CPF/CNPJ inválido</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Tipo Cliente</label>
+                                <input type="text" class="form-control" name="tipo_cliente" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Nome/Razão Social*</label>
+                                <input type="text" class="form-control" name="nome_razaosocial" required
+                                       onkeyup="this.value = this.value.toUpperCase()">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Nome Fantasia</label>
+                                <input type="text" class="form-control" name="apelido_nomefantasia"
+                                       onkeyup="this.value = this.value.toUpperCase()">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Endereço*</label>
+                                <input type="text" class="form-control" name="endereco" required
+                                       onkeyup="this.value = this.value.toUpperCase()">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Telefone*</label>
+                                <input type="text" class="form-control" name="telefone" required
+                                       onkeyup="formatarTelefone(this)">
+                                <div class="invalid-feedback">Telefone inválido</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email*</label>
+                                <input type="email" class="form-control" name="email" required
+                                       onkeyup="this.value = this.value.toUpperCase()">
+                                <div class="invalid-feedback">Email inválido</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" name="status_cliente">
+                                    <option value="Ativo">Ativo</option>
+                                    <option value="Inativo">Inativo</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div class="modal fade" id="edicaoModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <form id="formEdicao" onsubmit="return validarFormulario(this)">
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">CPF/CNPJ</label>
+                                <input type="text" class="form-control" name="cpf_cnpj" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Tipo Cliente</label>
+                                <input type="text" class="form-control" name="tipo_cliente" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Nome/Razão Social*</label>
+                                <input type="text" class="form-control" name="nome_razaosocial" required
+                                       onkeyup="this.value = this.value.toUpperCase()">
+                                <div class="invalid-feedback">Campo obrigatório</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Nome Fantasia</label>
+                                <input type="text" class="form-control" name="apelido_nomefantasia"
+                                       onkeyup="this.value = this.value.toUpperCase()">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Endereço*</label>
+                                <input type="text" class="form-control" name="endereco" required
+                                       onkeyup="this.value = this.value.toUpperCase()">
+                                <div class="invalid-feedback">Campo obrigatório</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Telefone*</label>
+                                <input type="text" class="form-control" name="telefone" required
+                                       onkeyup="formatarTelefone(this)">
+                                <div class="invalid-feedback">Telefone inválido</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email*</label>
+                                <input type="email" class="form-control" name="email" required
+                                       onkeyup="this.value = this.value.toUpperCase()">
+                                <div class="invalid-feedback">Email inválido</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Administrador</label>
+                                <input type="text" class="form-control" name="administrador_alteracao" required
+                                       onkeyup="this.value = this.value.toUpperCase()">
+                                <div class="invalid-feedback">Campo obrigatório</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" name="status_cliente">
+                                    <option value="Ativo">Ativo</option>
+                                    <option value="Inativo">Inativo</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+                    
+        </body>
+        </html>

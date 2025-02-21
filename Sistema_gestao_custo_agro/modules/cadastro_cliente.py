@@ -132,6 +132,7 @@ def formatar_cpf_cnpj(numero):
 
 
 
+# Modificação na função buscar_clientes no arquivo Python
 @cadastro_bp.route('/buscar_clientes', methods=['GET'])
 def buscar_clientes():
     try:
@@ -141,39 +142,30 @@ def buscar_clientes():
 
         # Normaliza o termo de busca
         termo_normalizado = normalizar_termo(termo)
-
-        # is_documento = len(termo_normalizado) in [11, 14]
         
-        # Busca por CPF/CNPJ normalizado e formatado
-        response_doc = supabase.table('cadastro_cliente').select('*').or_(
-            f"cpf_cnpj.ilike.%{termo_normalizado}%,cpf_cnpj.ilike.%{formatar_cpf_cnpj(termo_normalizado)}%"
-        ).execute()
+        # Verifica se é um CPF/CNPJ completo
+        is_documento_completo = len(termo_normalizado) in [11, 14]
+        
+        if is_documento_completo:
+            # Busca exata por CPF/CNPJ
+            response = supabase.table('cadastro_cliente').select('*').eq(
+                'cpf_cnpj', formatar_cpf_cnpj(termo_normalizado)
+            ).execute()
+        else:
+            # Busca por CPF/CNPJ parcial ou nome
+            response = supabase.table('cadastro_cliente').select('*').or_(
+                f"cpf_cnpj.ilike.%{termo_normalizado}%,"
+                f"nome_razaosocial.ilike.%{termo_normalizado}%"
+            ).execute()
 
-        # Busca por nome
-        response_nome = supabase.table('cadastro_cliente').select('*').ilike(
-            'nome_razaosocial', f"%{termo_normalizado}%"
-        ).execute()
-
-        # Combina e remove duplicatas
-        clientes = {
-            cliente['cpf_cnpj']: cliente 
-            for cliente in (response_doc.data + response_nome.data)
-        }.values()
-
-        # Formata CPF/CNPJ nos resultados
+        # Formata os resultados
         clientes_formatados = []
-        for cliente in clientes:
+        for cliente in response.data:
             cliente_copy = dict(cliente)
             cliente_copy['cpf_cnpj'] = formatar_cpf_cnpj(cliente['cpf_cnpj'])
             clientes_formatados.append(cliente_copy)
 
         return jsonify(clientes_formatados)
-
-    except TimeoutException as e:
-        print(f"Timeout error: {str(e)}")
-        return jsonify({
-            'error': 'Tempo limite de conexão excedido. Por favor, tente novamente.'
-        }), 504
 
     except Exception as e:
         print(f"Error in buscar_clientes: {str(e)}")
