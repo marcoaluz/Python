@@ -107,9 +107,13 @@
                 <i class="fas fa-user-plus"></i>
                 <span> Tela de Cadastro</span>
             </a>
-            <a href="{{ url_for('cadastro_propriedade.cadastro_propriedade') }}" class="nav-link"> 
+            <a href="{{ url_for('cadastro_propriedade.index') }}" class="nav-link"> 
                 <i class="fas fa-cog"></i>
                 <span>Cadastro Propriedade</span>
+            </a>
+            <a href="{{ url_for('cadastro_produto.cadastro_produto') }}" class="nav-link"> 
+                <i class="fas fa-box"></i>
+                <span>Cadastro Produtos</span>
             </a>
             <a href="{{ url_for('menu.menu') }}" class="nav-link">
                 <i class="fas fa-home"></i>
@@ -120,6 +124,7 @@
                 <span>Sair</span>
             </a>
         </nav>
+        
     </aside>
 
   <!-- Content Wrapper -->

@@ -1,292 +1,228 @@
 {% extends "base.html" %}
 {% block title %}Cadastro de Propriedade{% endblock %}
 {% block content %}
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
-    <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
-
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro de Propriedade</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestão de Propriedades</h2>
     
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f4f4f4;
-            margin: auto;
-            padding: 0;
-        }
-    
-        .container {
-            max-width: 1200px; /* Limita a largura máxima */
-            margin: auto;
-            padding: 15px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-    
-        h2 {
-            text-align: center;
-            color: #333;
-            margin-bottom: auto;
-            font-size: clamp(1.5rem, 2.5vw, 2.5rem); /* Responsivo */
-        }
-    
-        .table-responsive {
-            overflow-x: auto;
-            margin-top: auto;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-        }
-    
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-    
-        th, td {
-            padding: 10px;
-            text-align: left;
-            border: 1px solid #ddd;
-            overflow-wrap: break-word;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-    
-        thead th {
-            background-color: #343a40;
-            color: white;
-            font-size: clamp(0.8rem, 1.2vw, 1rem); /* Responsivo */
-        }
-    
-        tbody td {
-            font-size: clamp(0.7rem, 1vw, 0.9rem); /* Responsivo */
-        }
-    
-        tbody tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
-    
-        tbody tr:hover {
-            background-color: #e9ecef;
-        }
-    
-        button {
-            margin: 0 5px;
-            font-size: clamp(0.7rem, 1vw, 0.9rem); /* Responsivo */
-        }
-    
-        @media (max-width: 768px) {
-            .container {
-                padding: 10px;
-            }
-    
-            table {
-                font-size: 0.8rem;
-            }
-        }
-    </style>
-    
-    <script>
-        // Pesquisar dinamicamente
-        function pesquisarDinamico() {
-            const campoPesquisa = document.getElementById("campoPesquisa");
-            let termoPesquisa = campoPesquisa.value.trim();
-
-            if (termoPesquisa === "") {
-                restoreOriginalTable();
-                return;
-            }
-
-            fetch(`/buscar_propriedades?query=${encodeURIComponent(termoPesquisa)}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Erro na requisição: ${response.statusText}`);
-                    }
-                    return response.json();
-                })
-                .then(propriedades => {
-                    atualizarTabela(propriedades);
-                })
-                .catch(error => {
-                    console.error("Erro ao buscar propriedades:", error);
-                });
-        }
-
-        function restoreOriginalTable() {
-            location.reload();
-        }
-
-        function atualizarTabela(propriedades) {
-            const tbody = document.querySelector("tbody");
-            tbody.innerHTML = "";
-
-            if (propriedades.length === 0) {
-                const linhaVazia = document.createElement("tr");
-                linhaVazia.innerHTML = `<td colspan="7" class="text-center">Nenhuma propriedade encontrada.</td>`;
-                tbody.appendChild(linhaVazia);
-                return;
-            }
-
-            propriedades.forEach(propriedade => {
-                const linha = document.createElement("tr");
-                linha.innerHTML = `
-                    <td>${propriedade.id_propriedade}</td>
-                    <td>${propriedade.nome_propriedade}</td>
-                    <td>${propriedade.endereco}</td>
-                    <td>${propriedade.tamanho_hectares}</td>
-                    <td>${propriedade.tipo_cultura}</td>
-                    <td>${propriedade.administrador_alteracao}</td>
-                    <td>${propriedade.status_propriedade}</td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#alterarModal" 
-                                onclick="preencherModal('${propriedade.id_propriedade}', '${propriedade.nome_propriedade}', '${propriedade.endereco}', '${propriedade.tamanho_hectares}', '${propriedade.tipo_cultura}', '${propriedade.administrador_alteracao}', '${propriedade.status_propriedade}')">
-                            Alterar
-                        </button>
-                        <form method="POST" action="/cadastro_propriedade/deletar_propriedade/${propriedade.id_propriedade}" class="d-inline">
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir esta propriedade?')">Deletar</button>
-                        </form>
-                    </td>
-                `;
-                tbody.appendChild(linha);
-            });
-        }
-
-        function preencherModal(id, nome, endereco, tamanho, tipo, administrador, status) {
-            document.getElementById('modalId').value = id;
-            document.getElementById('modalNome').value = nome;
-            document.getElementById('modalEndereco').value = endereco;
-            document.getElementById('modalTamanho').value = tamanho;
-            document.getElementById('modalTipoCultura').value = tipo;
-            document.getElementById('modalAdministrador').value = administrador;
-            document.getElementById('modalStatus').value = status;
-        }
-    </script>
-</head>
-
-<body>
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
-        <h2>Gestão de Propriedades</h2>
+    <div class="d-flex gap-3">
+        <!-- Form de pesquisa -->
+        <form action="{{ url_for('cadastro_propriedade.index') }}" method="GET" class="d-flex gap-2">
+            <input type="text" class="form-control" name="query" value="{{ search_query|default('') }}" placeholder="Pesquisar...">
+            <button type="submit" class="btn btn-secondary">Buscar</button>
+        </form>
         
-        <div class="input-group w-50">
-            <input 
-                type="text" 
-                id="campoPesquisa" 
-                class="form-control" 
-                placeholder="Pesquisar propriedade" 
-                oninput="pesquisarDinamico()"
-            />
-        </div>
-
-        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#cadastroModal">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cadastroModal">
             Nova Propriedade
         </button>
     </div>
+</div>
 
-    {% if propriedades %}
-    <div class="table-responsive">
+     <!-- Tabela de Propriedades -->
+     <div class="table-responsive">
         <table class="table table-striped table-hover">
             <thead class="table-dark">
                 <tr>
-                    <th>ID Propriedade</th>
-                    <th>Nome</th>
-                    <th>Endereço</th>
-                    <th>Tamanho (ha)</th>
-                    <th>Tipo de Cultura</th>
-                    <th>Administrador</th>
+                    <th width="50"></th>
+                    <th>CPF/CNPJ</th>
+                    <th>Nome/Razão Social</th>
+                    <th>Nome Propriedade</th>
+                    <th>Tamanho</th>
+                    <th>Responsável</th>
+                    <th>Tipo Cultura</th>
                     <th>Status</th>
-                    <th class="text-center">Ações</th>
+                    <th width="150">Ações</th>
                 </tr>
             </thead>
             <tbody>
-                {% for propriedade in propriedades %}
-                <tr>
-                    <td>{{ propriedade.id_propriedade }}</td>
-                    <td>{{ propriedade.nome_propriedade }}</td>
-                    <td>{{ propriedade.endereco }}</td>
-                    <td>{{ propriedade.tamanho_hectares }}</td>
-                    <td>{{ propriedade.tipo_cultura }}</td>
-                    <td>{{ propriedade.administrador_alteracao }}</td>
-                    <td>{{ propriedade.status_propriedade }}</td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#alterarModal" 
-                                onclick="preencherModal('{{ propriedade.id_propriedade }}', '{{ propriedade.nome_propriedade }}', '{{ propriedade.endereco }}', '{{ propriedade.tamanho_hectares }}', '{{ propriedade.tipo_cultura }}', '{{ propriedade.administrador_alteracao }}', '{{ propriedade.status_propriedade }}')">
-                            Alterar
-                        </button>
-                        <form method="POST" action="{{ url_for('cadastro_propriedade.deletar_propriedade', id_propriedade=propriedade.id_propriedade) }}" class="d-inline">
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir esta propriedade?')">
-                                Deletar
+                {% if propriedades %}
+                    {% for prop in propriedades %}
+                    <tr>
+                        <td>
+                            <button class="btn btn-sm btn-outline-info" onclick="toggleDetails('{{ prop.id_propriedade }}')">
+                                <i class="fas fa-chevron-down" id="icon-{{ prop.id_propriedade }}"></i>
                             </button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
+                        </td>
+                        <td>{{ prop.cpf_cnpj_cliente }}</td>
+                        <td>{{ prop.nome_razaosocial }}</td>
+                        <td>{{ prop.nome_propriedade }}</td>
+                        <td>{{ prop.tamanho_propriedade }}</td>
+                        <td>{{ prop.respons_propriedade }}</td>
+                        <td>
+                            {% if prop.tipo_cultura == 1 %}
+                                Café
+                            {% elif prop.tipo_cultura == 2 %}
+                                Cereais
+                            {% else %}
+                                Café/Cereais
+                            {% endif %}
+                        </td>
+                        <td>{{ prop.status }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="editarPropriedade('{{ prop.id_propriedade }}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-info" onclick="cadastrarSafra('{{ prop.id_propriedade }}')">
+                                <i class="fas fa-plus"></i> Safra
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="desativarPropriedade('{{ prop.id_propriedade }}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                   <!-- Dentro da linha expandível com os detalhes -->
+<td colspan="9">
+    <div class="card">
+        <div class="card-body bg-light">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="card-title mb-0">Detalhes da Safra</h6>
+                <button class="btn btn-sm btn-outline-primary" onclick="cadastrarSafra('{{ prop.id_propriedade }}')">
+                    <i class="fas fa-plus"></i> Nova Safra
+                </button>
+            </div>
+            
+            {% if prop.nome_talhao or prop.qtd_produzida_total > 0 or prop.ano_safra %}
+            <!-- Exibe os dados de safra apenas se existirem -->
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label">Qtd. Produzida Total</label>
+                    <p class="mb-0">{{ prop.qtd_produzida_total or 0 }}</p>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Qtd. Produzida (t)</label>
+                    <p class="mb-0">{{ prop.qtd_produzida_t or 0 }}</p>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Tamanho Colhido</label>
+                    <p class="mb-0">{{ prop.tamanho_colido or 0 }}</p>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Nome Talhão</label>
+                    <p class="mb-0">{{ prop.nome_talhao or '-' }}</p>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Ano Safra</label>
+                    <p class="mb-0">{{ prop.ano_safra or '-' }}</p>
+                </div>
+            </div>
+            {% else %}
+            <!-- Mensagem quando não há dados de safra -->
+            <div class="alert alert-info">
+                Nenhuma safra cadastrada para esta propriedade. Clique no botão "Nova Safra" para adicionar.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</td>
+
+
+<tr id="details-{{ prop.id_propriedade }}" class="detail-row" style="display: none;">
+    <td colspan="9">
+        <div class="card">
+            <div class="card-body bg-light">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="card-title mb-0">Histórico de Safras</h6>
+                    <button class="btn btn-sm btn-outline-primary" onclick="cadastrarSafra('{{ prop.id_propriedade }}')">
+                        <i class="fas fa-plus"></i> Nova Safra
+                    </button>
+                </div>
+                
+                <div id="safras-{{ prop.id_propriedade }}">
+                    <div class="alert alert-info">
+                        Carregando dados de safra...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </td>
+</tr>
+
+
+
+
+
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center">Nenhuma propriedade encontrada.</td>
+                    </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>
-    {% else %}
-    <div class="alert alert-info text-center">Não há propriedades cadastradas no momento.</div>
+
+    <!-- Paginação -->
+    {% if total_pages is defined and total_pages > 1 %}
+    <nav aria-label="Navegação">
+        <ul class="pagination justify-content-center">
+            {% for page in range(1, total_pages + 1) %}
+            <li class="page-item {% if page == current_page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('cadastro_propriedade.index', page=page, query=search_query|default('')) }}">
+                    {{ page }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </nav>
     {% endif %}
 
     <!-- Modal de Cadastro -->
-    <div class="modal fade" id="cadastroModal" tabindex="-1" aria-labelledby="cadastroModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+    <div class="modal fade" id="cadastroModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="cadastroModalLabel">Nova Propriedade</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title">Nova Propriedade</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                
                 <div class="modal-body">
-                    <form method="POST" action="{{ url_for('cadastro_propriedade.salvar_propriedade') }}">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="id_propriedade" class="form-label">ID Propriedade</label>
-                                <input type="text" class="form-control" id="id_propriedade" name="id_propriedade" required 
-                                    oninput="this.value = this.value.toUpperCase();">
+                    <form id="propriedadeForm" onsubmit="return salvarPropriedade(event)">
+                        <div class="row g-3">
+                            <!-- Dados do Cliente -->
+                            <div class="col-md-6">
+                                <label class="form-label">CPF/CNPJ Cliente *</label>
+                                <input type="text" class="form-control" name="cpf_cnpj_cliente" required
+                                       onkeyup="buscarCliente(this.value)" autocomplete="off">
+                                <!-- A div de sugestões será inserida aqui pelo JavaScript -->
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="nome_propriedade" class="form-label">Nome da Propriedade</label>
-                                <input type="text" class="form-control" id="nome_propriedade" name="nome_propriedade" required 
-                                    oninput="this.value = this.value.toUpperCase();">
+                            <div class="col-md-6">
+                                <label class="form-label">Nome/Razão Social</label>
+                                <input type="text" class="form-control" name="nome_razaosocial" readonly>
                             </div>
-                            <div class="col-md-12 mb-3">
-                                <label for="endereco" class="form-label">Endereço</label>
-                                <input type="text" class="form-control" id="endereco" name="endereco" required 
-                                    oninput="this.value = this.value.toUpperCase();">
+
+                            <!-- Dados da Propriedade -->
+                            <div class="col-md-6">
+                                <label class="form-label">Nome da Propriedade *</label>
+                                <input type="text" class="form-control" name="nome_propriedade" required>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="tamanho_hectares" class="form-label">Tamanho (hectares)</label>
-                                <input type="number" step="0.01" class="form-control" id="tamanho_hectares" name="tamanho_hectares" required>
+                            <div class="col-md-6">
+                                <label class="form-label">Tamanho da Propriedade *</label>
+                                <input type="number" step="0.01" class="form-control" name="tamanho_propriedade" required>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="tipo_cultura" class="form-label">Tipo de Cultura</label>
-                                <input type="text" class="form-control" id="tipo_cultura" name="tipo_cultura" required 
-                                    oninput="this.value = this.value.toUpperCase();">
+
+                            <div class="col-md-6">
+                                <label class="form-label">Responsável *</label>
+                                <input type="text" class="form-control" name="respons_propriedade" required>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="administrador_alteracao" class="form-label">Administrador</label>
-                                <input type="text" class="form-control" id="administrador_alteracao" name="administrador_alteracao" required 
-                                    oninput="this.value = this.value.toUpperCase();">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="status_propriedade" class="form-label">Status</label>
-                                <select class="form-select" id="status_propriedade" name="status_propriedade">
-                                    <option value="Ativa">Ativa</option>
-                                    <option value="Inativa">Inativa</option>
+                            <div class="col-md-6">
+                                <label class="form-label">Tipo de Cultura *</label>
+                                <select class="form-select" name="tipo_cultura" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="1">Café</option>
+                                    <option value="2">Cereais</option>
+                                    <option value="3">Café/Cereais</option>
                                 </select>
                             </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Longitude</label>
+                                <input type="text" class="form-control" name="local_long">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Latitude</label>
+                                <input type="text" class="form-control" name="local_lat">
+                            </div>
                         </div>
-                        <div class="modal-footer">
+
+                        <div class="modal-footer mt-4">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                             <button type="submit" class="btn btn-primary">Salvar</button>
                         </div>
@@ -296,37 +232,431 @@
         </div>
     </div>
 
-    <!-- Modal para Alterar Propriedade -->
-    <div class="modal fade" id="alterarModal" tabindex="-1" aria-labelledby="alterarModalLabel" aria-hidden="true">
-        <!-- Similar structure to cadastroModal but with readonly ID field -->
+    <!-- Modal para Cadastro de Safra -->
+    <div class="modal fade" id="safraModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Cadastro de Safra</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="safraForm" onsubmit="return salvarSafra(event)">
+                        <input type="hidden" name="id_propriedade" id="safra_id_propriedade">
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Quantidade Produzida Total *</label>
+                                <input type="number" step="0.01" class="form-control" name="qtd_produzida_total" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Quantidade Produzida (t) *</label>
+                                <input type="number" step="0.01" class="form-control" name="qtd_produzida_t" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Tamanho Colhido *</label>
+                                <input type="number" step="0.01" class="form-control" name="tamanho_colido" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Nome do Talhão *</label>
+                                <input type="text" class="form-control" name="nome_talhao" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Ano Safra *</label>
+                                <input type="text" class="form-control" name="ano_safra" 
+                                       placeholder="Ex: 2023/24" maxlength="7" required>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer mt-4">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Salvar Safra</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
+</div>
 
-    <!-- Pagination section -->
-    <nav aria-label="Page navigation">
-        <ul class="pagination">
-            {% if current_page > 1 %}
-            <li class="page-item">
-                <a class="page-link" href="{{ url_for('cadastro_propriedade.lista_propriedades', page=current_page-1, query=request.args.get('query', '') ) }}" aria-label="Previous">
-                    <span aria-hidden="true">&laquo;</span>
-                </a>
-            </li>
-            {% endif %}
 
-            {% for page in range(1, total_pages + 1) %}
-            <li class="page-item {% if page == current_page %}active{% endif %}">
-                <a class="page-link" href="{{ url_for('cadastro_propriedade.lista_propriedades', page=page, query=request.args.get('query', '') ) }}">{{ page }}</a>
-            </li>
-            {% endfor %}
+<script>
+// Buscar cliente com sugestões
+function buscarCliente(termo) {
+    // Limpa o campo se o termo for muito curto
+    if (!termo || termo.length < 3) {
+        document.querySelector('input[name="nome_razaosocial"]').value = '';
         
-            {% if current_page < total_pages %}
-            <li class="page-item">
-                <a class="page-link" href="{{ url_for('cadastro_propriedade.lista_propriedades', page=current_page+1, query=request.args.get('query', '') ) }}" aria-label="Next">
-                    <span aria-hidden="true">&raquo;</span>
-                </a>
-            </li>
-            {% endif %}
-        </ul>
-    </nav>
-</body>
-</html>
+        // Esconde a lista de sugestões se estiver visível
+        const sugestoes = document.getElementById('clienteSugestoes');
+        if (sugestoes) {
+            sugestoes.style.display = 'none';
+        }
+        return;
+    }
+
+    fetch(`/buscar_clientes?query=${encodeURIComponent(termo)}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro ao buscar clientes');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Criar ou limpar div de sugestões
+            let sugestoes = document.getElementById('clienteSugestoes');
+            if (!sugestoes) {
+                // Criar a div de sugestões se não existir
+                sugestoes = document.createElement('div');
+                sugestoes.id = 'clienteSugestoes';
+                sugestoes.className = 'list-group position-absolute w-100 shadow-sm';
+                sugestoes.style.zIndex = '1000';
+                
+                // Inserir após o campo de CPF/CNPJ
+                const cpfCnpjInput = document.querySelector('input[name="cpf_cnpj_cliente"]');
+                cpfCnpjInput.parentNode.style.position = 'relative';
+                cpfCnpjInput.parentNode.appendChild(sugestoes);
+            } else {
+                // Limpar sugestões existentes
+                sugestoes.innerHTML = '';
+            }
+            
+            if (data.length === 0) {
+                // Se não encontrou resultados
+                sugestoes.style.display = 'none';
+                document.querySelector('input[name="nome_razaosocial"]').value = '';
+                return;
+            }
+            
+            // Exibir sugestões
+            sugestoes.style.display = 'block';
+            
+            // Adicionar cada cliente encontrado à lista de sugestões
+            data.forEach(cliente => {
+                const item = document.createElement('a');
+                item.className = 'list-group-item list-group-item-action';
+                item.href = '#';
+                item.textContent = `${cliente.cpf_cnpj} - ${cliente.nome_razaosocial}`;
+                
+                // Ao clicar em uma sugestão, preencher os campos
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    document.querySelector('input[name="cpf_cnpj_cliente"]').value = cliente.cpf_cnpj;
+                    document.querySelector('input[name="nome_razaosocial"]').value = cliente.nome_razaosocial;
+                    sugestoes.style.display = 'none';
+                });
+                
+                sugestoes.appendChild(item);
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao buscar clientes:', error);
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Configuração do formulário de busca
+    const searchForm = document.querySelector('form[action="{{ url_for("cadastro_propriedade.index") }}"]');
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const query = this.querySelector('input[name="query"]').value.trim();
+            window.location.href = `{{ url_for('cadastro_propriedade.index') }}?query=${encodeURIComponent(query)}`;
+        });
+    }
+    
+    // Adicionar estilos CSS para a lista de sugestões
+    const style = document.createElement('style');
+    style.textContent = `
+        #clienteSugestoes {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 5px;
+        }
+        #clienteSugestoes .list-group-item {
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        #clienteSugestoes .list-group-item:hover {
+            background-color: #f8f9fa;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Adicionar evento para fechar sugestões ao clicar fora
+    document.addEventListener('click', function(e) {
+        const sugestoes = document.getElementById('clienteSugestoes');
+        const cpfCnpjInput = document.querySelector('input[name="cpf_cnpj_cliente"]');
+        
+        if (sugestoes && !sugestoes.contains(e.target) && e.target !== cpfCnpjInput) {
+            sugestoes.style.display = 'none';
+        }
+    });
+});
+
+async function carregarSafras(idPropriedade) {
+    const container = document.getElementById(`safras-${idPropriedade}`);
+    
+    try {
+        const response = await fetch(`/cadastro_propriedade/safras/${idPropriedade}`);
+        const data = await response.json();
+        
+        if (!data.safras || data.safras.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    Nenhuma safra cadastrada para esta propriedade. Clique no botão "Nova Safra" para adicionar.
+                </div>
+            `;
+            return;
+        }
+        
+        // Filtrar safras apenas dos últimos 5 anos
+        const anoAtual = new Date().getFullYear();
+        const safrasFiltradas = data.safras.filter(safra => {
+            // Extrair o primeiro ano da string no formato "2023/24"
+            const anoSafra = parseInt(safra.ano_safra.split('/')[0]);
+            return anoSafra >= (anoAtual - 5);
+        });
+        
+        if (safrasFiltradas.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    Não há safras cadastradas para os últimos 5 anos. Clique no botão "Nova Safra" para adicionar.
+                </div>
+            `;
+            return;
+        }
+        
+        // Criar tabela com as safras filtradas
+        let html = `
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Ano Safra</th>
+                            <th>Talhão</th>
+                            <th>Qtd. Produzida Total</th>
+                            <th>Qtd. Produzida (t)</th>
+                            <th>Tamanho Colhido</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        // Ordenar safras pelo ano (mais recente primeiro)
+        safrasFiltradas.sort((a, b) => {
+            const anoA = parseInt(a.ano_safra.split('/')[0]);
+            const anoB = parseInt(b.ano_safra.split('/')[0]);
+            return anoB - anoA;
+        });
+        
+        safrasFiltradas.forEach(safra => {
+            html += `
+                <tr>
+                    <td>${safra.ano_safra}</td>
+                    <td>${safra.nome_talha || '-'}</td>
+                    <td>${safra.qtd_produzida_total}</td>
+                    <td>${safra.qtd_produzida_t}</td>
+                    <td>${safra.tamanho_colido}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-warning" onclick="editarSafra(${safra.id_safra})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="excluirSafra(${safra.id_safra})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Erro ao carregar safras:', error);
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                Erro ao carregar dados de safra. Por favor, tente novamente.
+            </div>
+        `;
+    }
+}
+
+// Modificação na função toggleDetails para carregar safras ao expandir
+function toggleDetails(id) {
+    const detailsRow = document.getElementById(`details-${id}`);
+    const icon = document.getElementById(`icon-${id}`);
+    
+    if (detailsRow.style.display === 'none') {
+        detailsRow.style.display = 'table-row';
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+        
+        // Carregar as safras quando expandir
+        carregarSafras(id);
+    } else {
+        detailsRow.style.display = 'none';
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+    }
+}
+
+// Função para abrir o modal de cadastro de safra
+function cadastrarSafra(idPropriedade) {
+    // Limpa o formulário
+    document.getElementById('safraForm').reset();
+    
+    // Define o ID da propriedade no formulário
+    document.getElementById('safra_id_propriedade').value = idPropriedade;
+    
+    // Abre o modal
+    new bootstrap.Modal(document.getElementById('safraModal')).show();
+}
+
+// Função para salvar os dados da safra
+async function salvarSafra(event) {
+    event.preventDefault();
+    
+    try {
+        const formData = new FormData(event.target);
+        const idPropriedade = formData.get('id_propriedade');
+        
+        // Criando um objeto com os dados do formulário
+        const dadosSafra = {
+            id_propriedade: idPropriedade,
+            qtd_produzida_total: formData.get('qtd_produzida_total'),
+            qtd_produzida_t: formData.get('qtd_produzida_t'),
+            tamanho_colido: formData.get('tamanho_colido'),
+            nome_talhao: formData.get('nome_talhao'),
+            ano_safra: formData.get('ano_safra')
+        };
+        
+        // Enviando os dados para o servidor
+        const response = await fetch('/cadastro_propriedade/salvar_safra', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dadosSafra)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Fecha o modal
+            document.getElementById('safraModal').querySelector('.btn-close').click();
+            
+            // Exibe mensagem de sucesso
+            alert(result.message || 'Safra cadastrada com sucesso!');
+            
+            // Recarrega a página para atualizar os dados
+            window.location.reload();
+        } else {
+            alert(result.error || 'Erro ao cadastrar safra');
+        }
+    } catch (error) {
+        console.error('Erro ao cadastrar safra:', error);
+        alert('Erro ao cadastrar safra. Verifique o console para mais detalhes.');
+    }
+    
+    return false;
+}
+
+// Atualização da função salvarPropriedade para não incluir campos de safra
+async function salvarPropriedade(event) {
+    event.preventDefault();
+    
+    try {
+        const formData = new FormData(event.target);
+        
+        // Verifica o cliente
+        if (!formData.get('nome_razaosocial')) {
+            alert('Por favor, selecione um cliente válido.');
+            return false;
+        }
+        
+        const response = await fetch("{{ url_for('cadastro_propriedade.salvar_propriedade') }}", {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Fecha o modal
+            document.getElementById('cadastroModal').querySelector('.btn-close').click();
+            
+            // Pergunta se deseja cadastrar safra
+            if (confirm(result.message + ' Deseja cadastrar uma safra para esta propriedade agora?')) {
+                cadastrarSafra(result.id_propriedade);
+            } else {
+                window.location.href = "{{ url_for('cadastro_propriedade.index') }}";
+            }
+        } else {
+            alert(result.error || 'Erro ao salvar propriedade');
+        }
+    } catch (error) {
+        console.error('Erro ao salvar:', error);
+        alert('Erro ao salvar propriedade');
+    }
+    
+    return false;
+}
+
+// Editar propriedade
+async function editarPropriedade(id) {
+    try {
+        const response = await fetch(`/cadastro_propriedade/propriedade/${id}`);
+        const data = await response.json();
+        
+        if (data.propriedade) {
+            const form = document.getElementById('propriedadeForm');
+            // Preencher o formulário com os dados
+            Object.keys(data.propriedade).forEach(key => {
+                const input = form.querySelector(`[name="${key}"]`);
+                if (input) {
+                    input.value = data.propriedade[key];
+                }
+            });
+            
+            new bootstrap.Modal(document.getElementById('cadastroModal')).show();
+        }
+    } catch (error) {
+        console.error('Erro ao carregar propriedade:', error);
+        alert('Erro ao carregar dados da propriedade');
+    }
+}
+
+// Desativar propriedade
+async function desativarPropriedade(id) {
+    if (!confirm('Tem certeza que deseja desativar esta propriedade?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/cadastro_propriedade/desativar/${id}`, {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message);
+            window.location.reload();
+        } else {
+            alert(result.error || 'Erro ao desativar propriedade');
+        }
+    } catch (error) {
+        console.error('Erro ao desativar:', error);
+        alert('Erro ao desativar propriedade');
+    }
+}
+</script>
 {% endblock %}
