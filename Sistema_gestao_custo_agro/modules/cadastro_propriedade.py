@@ -239,7 +239,7 @@ def salvar_propriedade():
 
 @cadastro_propriedade_bp.route('/cadastro_propriedade/safras/<int:id_propriedade>', methods=['GET'])
 @login_required
-def obter_safras(id_propriedade):
+def listar_safras_propriedade(id_propriedade):  # Nome modificado para evitar duplicidade
     """Rota para obter as safras de uma propriedade"""
     try:
         # Buscar safras relacionadas à propriedade na tabela cadastro_safra
@@ -258,7 +258,7 @@ def obter_safras(id_propriedade):
         return jsonify({
             'success': False,
             'error': str(e)
-        }), 500    
+        }), 500 
     
 
 @cadastro_propriedade_bp.route('/cadastro_propriedade/atualizar/<int:id_propriedade>', methods=['PUT'])
