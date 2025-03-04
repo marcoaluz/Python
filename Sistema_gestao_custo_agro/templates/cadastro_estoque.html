@@ -1,0 +1,788 @@
+{% extends "base.html" %}
+{% block title %}Cadastro de Estoque{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestão de Estoque</h2>
+    
+    <div class="d-flex gap-3">
+        <!-- Form de pesquisa -->
+        <form action="{{ url_for('cadastro_estoque.index') }}" method="GET" class="d-flex gap-2">
+            <input type="text" class="form-control" name="query" value="{{ search_query|default('') }}" placeholder="Pesquisar...">
+            <button type="submit" class="btn btn-secondary">Buscar</button>
+        </form>
+        
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cadastroModal">
+            Novo Estoque
+        </button>
+    </div>
+</div>
+
+<!-- Tabela de Estoques -->
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th width="50"></th>
+                <th>CPF/CNPJ</th>
+                <th>Nome/Razão Social</th>
+                <th>Nome Propriedade</th>
+                <th width="150">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if estoques and estoques|length > 0 %}
+                {% for estoque in estoques %}
+                <tr>
+                    <td>
+                        <button class="btn btn-sm btn-outline-info" onclick="toggleDetails('{{ estoque.id_estoque }}')">
+                            <i class="fas fa-chevron-down" id="icon-{{ estoque.id_estoque }}"></i>
+                        </button>
+                    </td>
+                    <td>{{ estoque.cnpj_cpf_propr_e }}</td>
+                    <td>{{ estoque.nome_razaosocial_e }}</td>
+                    <td>{{ estoque.nome_propriedade_e }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="cadastrarProduto('{{ estoque.id_estoque }}', '{{ estoque.nome_propriedade_e }}', '{{ estoque.cnpj_cpf_propr_e }}', '{{ estoque.nome_razaosocial_e }}')">
+                            <i class="fas fa-plus"></i> Adicionar Produto
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="excluirEstoque('{{ estoque.id_estoque }}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+
+                <!-- Linha de detalhes (expandível) -->
+                <tr id="details-{{ estoque.id_estoque }}" class="detail-row" style="display: none;">
+                    <td colspan="5">
+                        <div class="card">
+                            <div class="card-body bg-light">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="card-title mb-0">Produtos em Estoque</h6>
+                                </div>
+                                
+                                <div id="produtos-{{ estoque.id_estoque }}">
+                                    <div class="alert alert-info">
+                                        Carregando dados de produtos...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="5" class="text-center">Nenhum estoque encontrado.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Paginação -->
+{% if total_pages is defined and total_pages > 1 %}
+<nav aria-label="Navegação">
+    <ul class="pagination justify-content-center">
+        {% for page in range(1, total_pages + 1) %}
+        <li class="page-item {% if page == current_page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for('cadastro_estoque.index', page=page, query=search_query|default('')) }}">
+                {{ page }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Modal de Cadastro de Novo Estoque -->
+<div class="modal fade" id="cadastroModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Novo Estoque</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="estoqueForm" onsubmit="return salvarEstoque(event)">
+                    <div class="row g-3">
+                        <!-- Seleção da Propriedade -->
+                        <div class="col-md-12">
+                            <label class="form-label">Propriedade *</label>
+                            <select class="form-select" name="id_propriedade_e" required onchange="carregarDadosPropriedade(this.value)">
+                                <option value="">Selecione uma propriedade...</option>
+                                <!-- Opções serão carregadas via JavaScript -->
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nome da Propriedade</label>
+                            <input type="text" class="form-control" name="nome_propriedade_e" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">CPF/CNPJ</label>
+                            <input type="text" class="form-control" name="cnpj_cpf_propr_e" readonly>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Nome/Razão Social</label>
+                            <input type="text" class="form-control" name="nome_razaosocial_e" readonly>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer mt-4">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btnSalvar">Salvar e Continuar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Cadastro de Produto -->
+<div class="modal fade" id="produtoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cadastro de Produto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="produtoForm" onsubmit="return salvarProduto(event)">
+                    <!-- Campos ocultos para identificação -->
+                    <input type="hidden" name="id_produto">
+                    <input type="hidden" name="ID_estoque">
+                    
+                    <div class="row g-3">
+                        <!-- Exibir informações da propriedade -->
+                        <div class="col-12">
+                            <div class="alert alert-info mb-3" id="propriedadeInfo">
+                                Carregando informações da propriedade...
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Nome do Produto *</label>
+                            <input type="text" class="form-control" name="nome_produto" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Fornecedor *</label>
+                            <input type="text" class="form-control" name="fornecedor" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Data da Compra *</label>
+                            <input type="date" class="form-control" name="data_compra" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Data de Validade</label>
+                            <input type="date" class="form-control" name="validade_produto">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Quantidade *</label>
+                            <input type="number" step="0.01" class="form-control" name="quantidade" required onchange="calcularTotal()" oninput="calcularTotal()">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Unidade de Medida *</label>
+                            <select class="form-select" name="unidade_medida" required>
+                                <option value="">Selecione...</option>
+                                <option value="kg">Quilograma (kg)</option>
+                                <option value="g">Grama (g)</option>
+                                <option value="l">Litro (l)</option>
+                                <option value="ml">Mililitro (ml)</option>
+                                <option value="un">Unidade (un)</option>
+                                <option value="ton">Tonelada (ton)</option>
+                                <option value="cx">Caixa (cx)</option>
+                                <option value="sc">Saco (sc)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Valor Unitário *</label>
+                            <input type="number" step="0.01" class="form-control" name="valor_produto" required onchange="calcularTotal()" oninput="calcularTotal()">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Total (Calculado)</label>
+                            <input type="number" step="0.01" class="form-control" name="total_gasto" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Quantidade Disponível *</label>
+                            <input type="number" step="0.01" class="form-control" name="quantidade_disponivel" required>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer mt-4">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar Produto</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Carregamento inicial das propriedades
+document.addEventListener('DOMContentLoaded', function() {
+    // Carregar lista de propriedades ao abrir o modal
+    const cadastroModal = document.getElementById('cadastroModal');
+    cadastroModal.addEventListener('shown.bs.modal', function() {
+        carregarPropriedades();
+    });
+    
+    // Definir data de compra padrão como hoje
+    const hoje = new Date().toISOString().split('T')[0];
+    const dataCampos = document.querySelectorAll('input[name="data_compra"]');
+    dataCampos.forEach(campo => {
+        campo.value = hoje;
+    });
+    
+    // Configuração do formulário de busca
+    const searchForm = document.querySelector('form[action="{{ url_for("cadastro_estoque.index") }}"]');
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const query = this.querySelector('input[name="query"]').value.trim();
+            window.location.href = `{{ url_for('cadastro_estoque.index') }}?query=${encodeURIComponent(query)}`;
+        });
+    }
+});
+
+// Função para carregar as propriedades no select
+async function carregarPropriedades() {
+    try {
+        const response = await fetch('/buscar_propriedades');
+        const data = await response.json();
+        
+        const select = document.querySelector('select[name="id_propriedade_e"]');
+        
+        // Limpar opções anteriores (manter apenas a primeira)
+        select.innerHTML = '<option value="">Selecione uma propriedade...</option>';
+        
+        // Adicionar opções com base nas propriedades retornadas
+        data.forEach(propriedade => {
+            const option = document.createElement('option');
+            option.value = propriedade.id_propriedade;
+            option.textContent = `${propriedade.nome_propriedade} - ${propriedade.nome_razaosocial}`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar propriedades:', error);
+        alert('Não foi possível carregar a lista de propriedades.');
+    }
+}
+
+// Função para carregar dados da propriedade selecionada
+async function carregarDadosPropriedade(idPropriedade) {
+    if (!idPropriedade) {
+        // Limpar campos se nenhuma propriedade for selecionada
+        document.querySelector('input[name="nome_propriedade_e"]').value = '';
+        document.querySelector('input[name="cnpj_cpf_propr_e"]').value = '';
+        document.querySelector('input[name="nome_razaosocial_e"]').value = '';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/cadastro_propriedade/propriedade/${idPropriedade}`);
+        const data = await response.json();
+        
+        if (data.success && data.propriedade) {
+            const prop = data.propriedade;
+            
+            // Preencher os campos com os dados da propriedade
+            document.querySelector('input[name="nome_propriedade_e"]').value = prop.nome_propriedade;
+            document.querySelector('input[name="cnpj_cpf_propr_e"]').value = prop.cpf_cnpj_cliente;
+            document.querySelector('input[name="nome_razaosocial_e"]').value = prop.nome_razaosocial;
+        }
+    } catch (error) {
+        console.error('Erro ao carregar dados da propriedade:', error);
+    }
+}
+
+// Função para alternar a visualização dos detalhes (produtos)
+function toggleDetails(idEstoque) {
+    console.log("Toggling details for estoque ID:", idEstoque);
+    console.log("Element to toggle:", document.getElementById(`details-${idEstoque}`));
+    
+    const detailsRow = document.getElementById(`details-${idEstoque}`);
+    const icon = document.getElementById(`icon-${idEstoque}`);
+    
+    if (detailsRow.style.display === 'none') {
+        detailsRow.style.display = 'table-row';
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+        
+        // Carregar os produtos quando expandir
+        carregarProdutos(idEstoque);
+    } else {
+        detailsRow.style.display = 'none';
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+    }
+}
+
+// Função para carregar produtos de um estoque com paginação
+async function carregarProdutos(idEstoque, pagina = 1) {
+    const container = document.getElementById(`produtos-${idEstoque}`);
+    const PRODUTOS_POR_PAGINA = 5; // Número de produtos por página
+    
+    try {
+        const response = await fetch(`/cadastro_estoque/produtos/${idEstoque}`);
+        const data = await response.json();
+        
+        if (!data.produtos || data.produtos.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    Nenhum produto cadastrado para este estoque. Clique no botão "Adicionar Produto" para adicionar.
+                </div>
+            `;
+            return;
+        }
+        
+        // Ordenar produtos pela data de compra (mais recente primeiro)
+        data.produtos.sort((a, b) => {
+            return new Date(b.data_compra) - new Date(a.data_compra);
+        });
+        
+        // Cálculos de paginação
+        const totalProdutos = data.produtos.length;
+        const totalPaginas = Math.ceil(totalProdutos / PRODUTOS_POR_PAGINA);
+        
+        // Garantir que a página solicitada é válida
+        pagina = Math.max(1, Math.min(pagina, totalPaginas));
+        
+        // Obter apenas os produtos da página atual
+        const inicio = (pagina - 1) * PRODUTOS_POR_PAGINA;
+        const fim = Math.min(inicio + PRODUTOS_POR_PAGINA, totalProdutos);
+        const produtosPaginados = data.produtos.slice(inicio, fim);
+        
+        // Criar tabela com os produtos paginados
+        let html = `
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Nome do Produto</th>
+                            <th>Fornecedor</th>
+                            <th>Data Compra</th>
+                            <th>Validade</th>
+                            <th>Qtd</th>
+                            <th>Unid.</th>
+                            <th>Valor Un.</th>
+                            <th>Total</th>
+                            <th>Disponível</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        // Adicionar os produtos da página atual
+        produtosPaginados.forEach(produto => {
+        const dataCompra = produto.data_compra ? new Date(produto.data_compra).toLocaleDateString('pt-BR') : '-';
+        const dataValidade = produto.validade_produto ? new Date(produto.validade_produto).toLocaleDateString('pt-BR') : '-';
+        const total = parseFloat(produto.quantidade) * parseFloat(produto.valor_produto);
+    
+    html += `
+        <tr>
+            <td>${produto.nome_produto}</td>
+            <td>${produto.fornecedor}</td>
+            <td>${dataCompra}</td>
+            <td>${dataValidade}</td>
+            <td>${parseFloat(produto.quantidade).toFixed(2)}</td>
+            <td>${produto.unidade_medida}</td>
+            <td>R$ ${parseFloat(produto.valor_produto).toFixed(2)}</td>
+            <td>R$ ${parseFloat(produto.total_gasto || total).toFixed(2)}</td>
+            <td>${parseFloat(produto.quantidade_disponivel).toFixed(2)}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-warning" onclick="editarProduto(${produto.id_produto})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="excluirProduto(${produto.id_produto})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+    }); 
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        // Adicionar controles de paginação se houver mais de uma página
+        if (totalPaginas > 1) {
+            html += `
+                <nav aria-label="Navegação de produtos" class="mt-2">
+                    <ul class="pagination pagination-sm justify-content-center">
+            `;
+            
+            // Botão Anterior
+            html += `
+                <li class="page-item ${pagina === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); carregarProdutos('${idEstoque}', ${pagina - 1})" aria-label="Anterior">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+            `;
+            
+            // Números das páginas
+            for (let i = 1; i <= totalPaginas; i++) {
+                html += `
+                    <li class="page-item ${i === pagina ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="event.preventDefault(); carregarProdutos('${idEstoque}', ${i})">
+                            ${i}
+                        </a>
+                    </li>
+                `;
+            }
+            
+            // Botão Próximo
+            html += `
+                <li class="page-item ${pagina === totalPaginas ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); carregarProdutos('${idEstoque}', ${pagina + 1})" aria-label="Próximo">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            `;
+            
+            html += `
+                    </ul>
+                </nav>
+                <div class="text-center text-muted small">
+                    Exibindo ${inicio + 1}-${fim} de ${totalProdutos} produtos
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Erro ao carregar produtos:', error);
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                Erro ao carregar dados de produtos. Por favor, tente novamente.
+            </div>
+        `;
+    }
+}
+
+// Função para abrir o modal de cadastro de produto
+function cadastrarProduto(idEstoque, nomePropriedade, cpfCnpj, nomeRazaoSocial) {
+    // Limpa o formulário
+    document.getElementById('produtoForm').reset();
+    
+    
+    // Define o ID do estoque no formulário
+    document.querySelector('#produtoForm input[name="ID_estoque"]').value = idEstoque;
+    
+    // Atualiza o texto informativo da propriedade
+    document.getElementById('propriedadeInfo').innerHTML = `
+        <strong>Propriedade:</strong> ${nomePropriedade}<br>
+        <strong>CPF/CNPJ:</strong> ${cpfCnpj}<br>
+        <strong>Nome/Razão Social:</strong> ${nomeRazaoSocial}
+    `;
+    
+    // Definir data atual
+    const hoje = new Date().toISOString().split('T')[0];
+    document.querySelector('#produtoForm input[name="data_compra"]').value = hoje;
+    
+    // Definir quantidade disponível igual à quantidade
+    const qtdInput = document.querySelector('#produtoForm input[name="quantidade"]');
+    qtdInput.addEventListener('change', function() {
+        document.querySelector('#produtoForm input[name="quantidade_disponivel"]').value = this.value;
+    });
+    
+    // Resetar o título do modal para indicar que é um novo cadastro
+    const modalTitle = document.querySelector('#produtoModal .modal-title');
+    if (modalTitle) {
+        modalTitle.textContent = 'Cadastro de Produto';
+    }
+    
+    // Resetar o texto do botão
+    const btnSalvar = document.querySelector('#produtoForm .btn-primary');
+    if (btnSalvar) {
+        btnSalvar.textContent = 'Salvar Produto';
+    }
+    
+    // Abre o modal
+    new bootstrap.Modal(document.getElementById('produtoModal')).show();
+}
+
+// Função para calcular o total (quantidade * valor unitário)
+function calcularTotal() {
+    const quantidade = parseFloat(document.querySelector('#produtoForm input[name="quantidade"]').value) || 0;
+    const valorUnitario = parseFloat(document.querySelector('#produtoForm input[name="valor_produto"]').value) || 0;
+    const total = quantidade * valorUnitario;
+    
+    document.querySelector('#produtoForm input[name="total_gasto"]').value = total.toFixed(2);
+    
+    // Atualizar também a quantidade disponível se for um novo produto
+    const idProduto = document.querySelector('#produtoForm input[name="id_produto"]').value;
+    if (!idProduto) {
+        document.querySelector('#produtoForm input[name="quantidade_disponivel"]').value = quantidade.toFixed(2);
+    }
+}
+
+// Função para salvar os dados do estoque (sem produtos)
+async function salvarEstoque(event) {
+    event.preventDefault();
+    
+    try {
+        const form = event.target;
+        const formData = new FormData(form);
+        
+        // Verifica a propriedade
+        if (!formData.get('id_propriedade_e')) {
+            alert('Por favor, selecione uma propriedade válida.');
+            return false;
+        }
+        
+        // É um novo cadastro - usa a rota de salvar
+        const url = "{{ url_for('cadastro_estoque.salvar_estoque') }}";
+        
+        // Enviar como FormData
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Fecha o modal
+            document.getElementById('cadastroModal').querySelector('.btn-close').click();
+            
+            // Cadastrar produto diretamente
+            cadastrarProduto(
+                result.id_estoque, 
+                result.nome_propriedade_e, 
+                result.cnpj_cpf_propr_e, 
+                result.nome_razaosocial_e
+            );
+        } else {
+            alert(result.error || 'Erro ao salvar estoque');
+        }
+    } catch (error) {
+        console.error('Erro ao salvar:', error);
+        alert('Erro ao salvar estoque');
+    }
+    
+    return false;
+}
+
+// Função para salvar produto
+async function salvarProduto(event) {
+    event.preventDefault();
+    
+    try {
+        const form = event.target;
+        const formData = new FormData(form);
+        const idProduto = formData.get('id_produto');
+        
+        // Calcular o total automaticamente
+        const quantidade = parseFloat(formData.get('quantidade')) || 0;
+        const valorUnitario = parseFloat(formData.get('valor_produto')) || 0;
+        
+        // Criando um objeto com os dados do formulário
+        const dadosProduto = {
+            ID_estoque: formData.get('ID_estoque'),
+            nome_produto: formData.get('nome_produto'),
+            fornecedor: formData.get('fornecedor'),
+            data_compra: formData.get('data_compra'),
+            validade_produto: formData.get('validade_produto') || null,
+            quantidade: quantidade,
+            unidade_medida: formData.get('unidade_medida'),
+            valor_produto: valorUnitario,
+            quantidade_disponivel: parseFloat(formData.get('quantidade_disponivel')) || 0
+        };
+        
+        let url, method;
+        
+        if (idProduto) {
+            // É uma edição
+            url = `/cadastro_estoque/atualizar_produto/${idProduto}`;
+            method = 'PUT';
+            dadosProduto.id_produto = idProduto;
+        } else {
+            // É um novo cadastro
+            url = '/cadastro_estoque/salvar_produto';
+            method = 'POST';
+        }
+        
+        // Enviando os dados para o servidor
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dadosProduto)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Fecha o modal
+            document.getElementById('produtoModal').querySelector('.btn-close').click();
+            
+            // Exibe mensagem de sucesso
+            alert(result.message || (idProduto ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!'));
+            
+            // Recarrega a página para atualizar os dados
+            window.location.reload();
+        } else {
+            alert(result.error || 'Erro ao processar produto');
+        }
+    } catch (error) {
+        console.error('Erro ao processar produto:', error);
+        alert('Erro ao processar produto. Verifique o console para mais detalhes.');
+    }
+    
+    return false;
+}
+
+// Função para editar produto
+async function editarProduto(idProduto) {
+    try {
+        // Make sure idProduto is defined
+        if (!idProduto) {
+            console.error("ID do produto é undefined");
+            alert('Erro: ID do produto não definido');
+            return;
+        }
+        
+        console.log("Editando produto com ID:", idProduto);
+        
+        // Carregar os dados do produto
+        const response = await fetch(`/cadastro_estoque/produto/${idProduto}`);
+        const data = await response.json();
+        
+        if (!data.success || !data.produto) {
+            alert('Erro ao carregar dados do produto.');
+            return;
+        }
+        
+        const produto = data.produto;
+        
+        // Preencher o formulário com os dados do produto
+        const form = document.getElementById('produtoForm');
+        
+        // Definir o ID do produto
+        form.querySelector('input[name="id_produto"]').value = produto.id_produto;
+        
+        // Definir o ID do estoque
+        form.querySelector('input[name="ID_estoque"]').value = produto.id_estoque;
+        
+        // Buscar informações do estoque para exibição
+        const estoqueResponse = await fetch(`/cadastro_estoque/estoque/${produto.id_estoque}`);
+        const estoqueData = await estoqueResponse.json();
+        
+        if (estoqueData.success && estoqueData.estoque) {
+            const estoque = estoqueData.estoque;
+            
+            // Atualiza o texto informativo da propriedade
+            document.getElementById('propriedadeInfo').innerHTML = `
+                <strong>Propriedade:</strong> ${estoque.nome_propriedade_e}<br>
+                <strong>CPF/CNPJ:</strong> ${estoque.cnpj_cpf_propr_e}<br>
+                <strong>Nome/Razão Social:</strong> ${estoque.nome_razaosocial_e}
+            `;
+        }
+        
+        // Preencher os campos do formulário com dados do produto
+        form.querySelector('input[name="nome_produto"]').value = produto.nome_produto;
+        form.querySelector('input[name="fornecedor"]').value = produto.fornecedor;
+        
+        // Formatar as datas
+        if (produto.data_compra) {
+            const dataCompra = typeof produto.data_compra === 'string' ? produto.data_compra.split('T')[0] : new Date(produto.data_compra).toISOString().split('T')[0];
+            form.querySelector('input[name="data_compra"]').value = dataCompra;
+        }
+        
+        if (produto.validade_produto) {
+            const dataValidade = typeof produto.validade_produto === 'string' ? produto.validade_produto.split('T')[0] : new Date(produto.validade_produto).toISOString().split('T')[0];
+            form.querySelector('input[name="validade_produto"]').value = dataValidade;
+        }
+        
+        form.querySelector('input[name="quantidade"]').value = produto.quantidade;
+        form.querySelector('select[name="unidade_medida"]').value = produto.unidade_medida;
+        form.querySelector('input[name="valor_produto"]').value = produto.valor_produto;
+        
+        // Calcular o total
+        const total = parseFloat(produto.quantidade) * parseFloat(produto.valor_produto);
+        form.querySelector('input[name="total_gasto"]').value = produto.total_gasto || total.toFixed(2);
+        
+        form.querySelector('input[name="quantidade_disponivel"]').value = produto.quantidade_disponivel;
+        
+        // Alterar o título do modal para indicar que é edição
+        const modalTitle = document.querySelector('#produtoModal .modal-title');
+        if (modalTitle) {
+            modalTitle.textContent = 'Editar Produto';
+        }
+        
+        // Alterar o texto do botão
+        const btnSalvar = document.querySelector('#produtoForm .btn-primary');
+        if (btnSalvar) {
+            btnSalvar.textContent = 'Atualizar Produto';
+        }
+        
+        // Mostrar o modal
+        new bootstrap.Modal(document.getElementById('produtoModal')).show();
+        
+    } catch (error) {
+        console.error('Erro ao carregar produto:', error);
+        alert('Erro ao carregar dados do produto. Verifique o console para mais detalhes.');
+    }
+}
+
+// Função para excluir produto
+async function excluirProduto(idProduto) {
+    if (!confirm('Tem certeza que deseja excluir este produto? Esta operação não pode ser desfeita.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/cadastro_estoque/produto/${idProduto}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message || 'Produto excluído com sucesso!');
+            window.location.reload();
+        } else {
+            alert(result.error || 'Erro ao excluir produto');
+        }
+    } catch (error) {
+        console.error('Erro ao excluir produto:', error);
+        alert('Erro ao excluir produto. Verifique o console para mais detalhes.');
+    }
+}
+
+// Função para excluir estoque
+async function excluirEstoque(idEstoque) {
+    if (!confirm('ATENÇÃO: Esta ação excluirá permanentemente o estoque e todos os produtos relacionados. Esta operação não pode ser desfeita. Deseja continuar?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/cadastro_estoque/excluir/${idEstoque}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message);
+            window.location.reload();
+        } else {
+            alert(result.error || 'Erro ao excluir estoque');
+        }
+    } catch (error) {
+        console.error('Erro ao excluir:', error);
+        alert('Erro ao excluir estoque. Verifique o console para mais detalhes.');
+    }
+}
+
+
+
+</script>
+{% endblock %}

@@ -235,7 +235,7 @@ def alterar_cliente():
     flash('Cadastro alterado com sucesso!', 'success')
     return redirect(url_for('cadastro_cliente.lista_clientes'))
 
-@cadastro_bp.route('/deletar_cliente/<string:cpf_cnpj>', methods=['POST'])
+@cadastro_bp.route('/deletar_cliente/<path:cpf_cnpj>', methods=['POST'])
 def deletar_cliente(cpf_cnpj):
     supabase.table('cadastro_cliente').delete().eq('cpf_cnpj', cpf_cnpj).execute()
     flash("Cliente excluído com sucesso!", "success")
@@ -250,7 +250,6 @@ def salvar_cliente():
     telefone = request.form.get('telefone')
     email = request.form.get('email')
     tipo_cliente = request.form.get('tipo_cliente')
-    administrador_alteracao = request.form.get('administrador_alteracao')
 
     if not all([nome_razaosocial, cpf_cnpj, telefone, email, tipo_cliente]):
         flash('Por favor, preencha todos os campos obrigatórios.', 'danger')
@@ -271,7 +270,6 @@ def salvar_cliente():
             'email': email,
             'tipo_cliente': tipo_cliente,
             'data_alteracao': None,
-            'administrador_alteracao': administrador_alteracao,
             'status_cliente': 'Ativo',
             'data_desativacao': None
         }).execute()

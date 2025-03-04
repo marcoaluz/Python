@@ -4,6 +4,7 @@ from supabase import create_client
 from datetime import datetime
 from math import ceil
 import httpx
+import traceback
 from httpx import Limits, Client
 
 from config import SUPABASE_URL, SUPABASE_API_KEY
@@ -26,33 +27,45 @@ def index():
     current_page = int(request.args.get('page', 1))
     search_query = request.args.get('query', '').strip()
     start_index = (current_page - 1) * items_per_page
-    end_index = start_index + items_per_page
+    end_index = start_index + items_per_page - 1  # Corrigido para considerar o início em 0
 
     try:
+        # Teste de consulta simples para debugging
+        teste = supabase.table(SUPABASE_PROPERTIES_TABLE).select('*').execute()
+        print(f"DEBUG - Total de registros na tabela: {len(teste.data)}")
+        
+        # Busca propriedades (sem filtro de status para garantir que todas apareçam)
         if search_query:
-            propriedades = supabase.table(SUPABASE_PROPERTIES_TABLE)\
+            query = supabase.table(SUPABASE_PROPERTIES_TABLE)\
                 .select('*')\
-                .or_(f'nome_propriedade.ilike.%{search_query}%, cpf_cnpj_cliente.ilike.%{search_query}%')\
-                .order('id_propriedade', desc=True)\
-                .range(start_index, end_index)\
-                .execute()
+                .or_(f'nome_propriedade.ilike.%{search_query}%, cpf_cnpj_cliente.ilike.%{search_query}%, nome_razaosocial.ilike.%{search_query}%')\
+                .order('nome_razaosocial', desc=False)
             
-            total_count = len(supabase.table(SUPABASE_PROPERTIES_TABLE)\
+            # Obter total para paginação
+            total_count_query = supabase.table(SUPABASE_PROPERTIES_TABLE)\
                 .select('id_propriedade')\
-                .or_(f'nome_propriedade.ilike.%{search_query}%, cpf_cnpj_cliente.ilike.%{search_query}%')\
-                .execute().data)
+                .or_(f'nome_propriedade.ilike.%{search_query}%, cpf_cnpj_cliente.ilike.%{search_query}%, nome_razaosocial.ilike.%{search_query}%')
         else:
-            propriedades = supabase.table(SUPABASE_PROPERTIES_TABLE)\
+            query = supabase.table(SUPABASE_PROPERTIES_TABLE)\
                 .select('*')\
-                .order('id_propriedade', desc=True)\
-                .range(start_index, end_index)\
-                .execute()
+                .order('nome_razaosocial', desc=False)
             
-            total_count = len(supabase.table(SUPABASE_PROPERTIES_TABLE)\
-                .select('id_propriedade')\
-                .execute().data)
+            # Obter total para paginação
+            total_count_query = supabase.table(SUPABASE_PROPERTIES_TABLE)\
+                .select('id_propriedade')
 
+        # Executar consulta paginada
+        propriedades = query.range(start_index, end_index).execute()
+        print(f"DEBUG - Consulta paginada: {len(propriedades.data)} propriedades encontradas")
+        
+        # Executar consulta para contagem total
+        total_count_result = total_count_query.execute()
+        total_count = len(total_count_result.data)
+        
+        # Calcular total de páginas
         total_pages = ceil(total_count / items_per_page)
+        
+        print(f"DEBUG - Total de propriedades: {total_count}, Total de páginas: {total_pages}")
 
         return render_template(
             'cadastro_propriedade.html',
@@ -63,8 +76,10 @@ def index():
         )
 
     except Exception as e:
+        # Captura e exibe o erro detalhado
+        tb = traceback.format_exc()
+        print(f'Erro completo: {tb}')
         flash(f'Erro ao carregar propriedades: {str(e)}', 'danger')
-        # Mesmo em caso de erro, retornamos os valores padrão para evitar erros no template
         return render_template(
             'cadastro_propriedade.html', 
             propriedades=[],
@@ -73,7 +88,7 @@ def index():
             search_query=''
         )
 
-@cadastro_propriedade_bp.route('/cadastro_propriedade/buscar_cliente/<cpf_cnpj>', methods=['GET'])
+@cadastro_propriedade_bp.route('/buscar_clientes', methods=['GET'])
 @login_required
 def buscar_clientes():
     """Rota para buscar clientes por CPF/CNPJ ou nome (busca parcial)"""
@@ -98,63 +113,112 @@ def buscar_clientes():
 
 @cadastro_propriedade_bp.route('/cadastro_propriedade/propriedade/<int:id_propriedade>', methods=['GET'])
 @login_required
-def obter_safras(id_propriedade):
-    """Rota para obter as safras de uma propriedade"""
+def obter_propriedade(id_propriedade):
+    """Rota para obter os dados de uma propriedade"""
     try:
-        # Verifique se a tabela cadastro_safra existe no seu banco
-        # Se existir, busque as safras relacionadas à propriedade
-        try:
-            safras = supabase.table('cadastro_safra')\
-                .select('*')\
-                .eq('id_propriedade', id_propriedade)\
-                .execute()
-            
+        propriedade = supabase.table(SUPABASE_PROPERTIES_TABLE)\
+            .select('*')\
+            .eq('id_propriedade', id_propriedade)\
+            .execute()
+        
+        if not propriedade.data:
             return jsonify({
-                'success': True,
-                'safras': safras.data if safras.data else []
-            })
-        except Exception as e:
-            # Se der erro (tabela não existe), vamos buscar os dados de safra da própria tabela de propriedades
-            propriedade = supabase.table(SUPABASE_PROPERTIES_TABLE)\
-                .select('id_propriedade, qtd_produzida_total, qtd_produzida_t, tamanho_colido, nome_talhao, ano_safra')\
-                .eq('id_propriedade', id_propriedade)\
-                .execute()
+                'success': False,
+                'message': 'Propriedade não encontrada'
+            }), 404
             
-            if not propriedade.data:
-                return jsonify({
-                    'success': False,
-                    'message': 'Propriedade não encontrada'
-                }), 404
-            
-            # Se os dados de safra existirem na propriedade, retorne como uma safra
-            prop = propriedade.data[0]
-            if prop.get('nome_talhao') or prop.get('ano_safra'):
-                # Formatar como uma lista de safras para manter compatibilidade com a interface
-                safras = [{
-                    'id_safra': prop['id_propriedade'],  # Usar o mesmo ID da propriedade como ID da safra
-                    'id_propriedade': prop['id_propriedade'],
-                    'qtd_produzida_total': prop.get('qtd_produzida_total', 0),
-                    'qtd_produzida_t': prop.get('qtd_produzida_t', 0),
-                    'tamanho_colido': prop.get('tamanho_colido', 0),
-                    'nome_talhao': prop.get('nome_talhao', ''),
-                    'ano_safra': prop.get('ano_safra', '')
-                }]
-            else:
-                safras = []
-                
-            return jsonify({
-                'success': True,
-                'safras': safras
-            })
-            
+        return jsonify({
+            'success': True,
+            'propriedade': propriedade.data[0]
+        })
+        
     except Exception as e:
-        print(f"Erro ao obter safras: {str(e)}")
+        print(f"Erro ao obter propriedade: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
 
 
+@cadastro_propriedade_bp.route('/cadastro_propriedade/safras/<int:id_propriedade>', methods=['GET'])
+@login_required
+def listar_safras_propriedade(id_propriedade):
+    """Rota para listar todas as safras de uma propriedade"""
+    try:
+        safras = supabase.table('cadastro_safra')\
+            .select('*')\
+            .eq('id_propriedade', id_propriedade)\
+            .execute()
+        
+        return jsonify({
+            'success': True,
+            'safras': safras.data
+        })
+        
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"Erro completo ao listar safras: {tb}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+@cadastro_propriedade_bp.route('/cadastro_propriedade/safras/<int:id_propriedade>', methods=['GET'])
+@login_required
+def obter_safra(id_safra):
+    """Rota para obter os dados de uma safra específica"""
+    try:
+        safra = supabase.table('cadastro_safra')\
+            .select('*')\
+            .eq('id_safra', id_safra)\
+            .execute()
+        
+        if not safra.data or len(safra.data) == 0:
+            return jsonify({
+                'success': False,
+                'message': 'Safra não encontrada'
+            }), 404
+            
+        return jsonify({
+            'success': True,
+            'safra': safra.data[0]
+        })
+        
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"Erro completo ao obter safra: {tb}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cadastro_propriedade_bp.route('/cadastro_propriedade/safra/<int:id_safra>', methods=['GET'])
+@login_required
+def obter_safra_especifica(id_safra):
+    """Rota para obter os dados de uma safra específica pelo ID"""
+    try:
+        safra = supabase.table('cadastro_safra')\
+            .select('*')\
+            .eq('id_safra', id_safra)\
+            .execute()
+        
+        if not safra.data or len(safra.data) == 0:
+            return jsonify({
+                'success': False,
+                'message': 'Safra não encontrada'
+            }), 404
+            
+        return jsonify({
+            'success': True,
+            'safra': safra.data[0]
+        })
+        
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"Erro completo ao obter safra específica: {tb}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500  
 
 # Modifique a função salvar_safra para usar a tabela separada:
 @cadastro_propriedade_bp.route('/cadastro_propriedade/salvar_safra', methods=['POST'])
@@ -201,13 +265,111 @@ def salvar_safra():
     except Exception as e:
         print(f"Erro ao salvar safra: {str(e)}")
         return jsonify({'error': str(e)}), 500
+    
 
-# Modifique a função salvar_propriedade para retornar o ID da propriedade criada
-@cadastro_propriedade_bp.route('/cadastro_propriedade/salvar', methods=['POST'])
+@cadastro_propriedade_bp.route('/cadastro_propriedade/atualizar_safra/<int:id_safra>', methods=['PUT'])
+@login_required
+def atualizar_safra(id_safra):
+    """Rota para atualizar uma safra existente"""
+    try:
+        data = request.get_json()
+        
+        # Verificar se a safra existe
+        safra = supabase.table('cadastro_safra')\
+            .select('*')\
+            .eq('id_safra', id_safra)\
+            .execute()
+            
+        if not safra.data or len(safra.data) == 0:
+            return jsonify({
+                'success': False,
+                'message': 'Safra não encontrada'
+            }), 404
+        
+        # Preparar dados para atualização
+        update_data = {
+            'qtd_produzida_total': float(data.get('qtd_produzida_total', 0)),
+            'qtd_produzida_t': float(data.get('qtd_produzida_t', 0)),
+            'tamanho_colido': float(data.get('tamanho_colido', 0)),
+            'nome_talhao': data.get('nome_talhao', '').upper(),
+            'ano_safra': data.get('ano_safra', ''),
+            'data_alteracao': datetime.now().isoformat()
+            
+        }
+        
+        # Logs para debug
+        print(f"DEBUG - Atualizando safra {id_safra}")
+        print(f"DEBUG - Dados de atualização: {update_data}")
+        
+        # Executar atualização
+        result = supabase.table('cadastro_safra')\
+            .update(update_data)\
+            .eq('id_safra', id_safra)\
+            .execute()
+            
+        print(f"DEBUG - Resultado da atualização: {result.data}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Safra atualizada com sucesso!'
+        })
+        
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"Erro completo ao atualizar safra: {tb}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cadastro_propriedade_bp.route('/cadastro_propriedade/safra/<int:id_safra>', methods=['DELETE'])
+@login_required
+def excluir_safra(id_safra):
+    """Rota para excluir uma safra"""
+    try:
+        # Verificar se a safra existe
+        safra = supabase.table('cadastro_safra')\
+            .select('*')\
+            .eq('id_safra', id_safra)\
+            .execute()
+            
+        if not safra.data or len(safra.data) == 0:
+            return jsonify({
+                'success': False,
+                'message': 'Safra não encontrada'
+            }), 404
+        
+        # Excluir a safra
+        result = supabase.table('cadastro_safra')\
+            .delete()\
+            .eq('id_safra', id_safra)\
+            .execute()
+            
+        print(f"DEBUG - Safra {id_safra} excluída: {result.data}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Safra excluída com sucesso!'
+        })
+        
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(f"Erro completo ao excluir safra: {tb}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500    
+
+@cadastro_propriedade_bp.route('/cadastro_propriedade/salvar_propriedade', methods=['POST'])
 @login_required
 def salvar_propriedade():
     """Rota para salvar uma nova propriedade"""
     try:
+        # Obter e tratar dados do formulário
+        local_long = request.form.get('local_long', '').strip()
+        local_lat = request.form.get('local_lat', '').strip()
+        
+        # Preparar dados para inserção, convertendo para None os campos vazios
         data = {
             'cpf_cnpj_cliente': request.form.get('cpf_cnpj_cliente'),
             'nome_razaosocial': request.form.get('nome_razaosocial'),
@@ -215,13 +377,25 @@ def salvar_propriedade():
             'tamanho_propriedade': float(request.form.get('tamanho_propriedade')),
             'respons_propriedade': request.form.get('respons_propriedade').upper(),
             'tipo_cultura': int(request.form.get('tipo_cultura')),
-            'local_long': request.form.get('local_long'),
-            'local_lat': request.form.get('local_lat'),
             'status': 'Ativo',
             'data_cadastro': datetime.now().isoformat(),
             'usuario_cadastro': session.get('user_id')
         }
+        
+        # Adicionar longitude e latitude apenas se não estiverem vazios
+        if local_long:
+            data['local_long'] = float(local_long)
+        else:
+            data['local_long'] = None
+            
+        if local_lat:
+            data['local_lat'] = float(local_lat)
+        else:
+            data['local_lat'] = None
 
+        # Log para debug
+        print(f"DEBUG - Dados para inserção: {data}")
+            
         result = supabase.table(SUPABASE_PROPERTIES_TABLE).insert(data).execute()
         
         # Obtém o ID da propriedade inserida
@@ -234,33 +408,9 @@ def salvar_propriedade():
         })
 
     except Exception as e:
+        print(f"Erro ao salvar propriedade: {str(e)}")
         return jsonify({'error': str(e)}), 500
     
-
-@cadastro_propriedade_bp.route('/cadastro_propriedade/safras/<int:id_propriedade>', methods=['GET'])
-@login_required
-def listar_safras_propriedade(id_propriedade):  # Nome modificado para evitar duplicidade
-    """Rota para obter as safras de uma propriedade"""
-    try:
-        # Buscar safras relacionadas à propriedade na tabela cadastro_safra
-        safras = supabase.table('cadastro_safra')\
-            .select('*')\
-            .eq('id_propriedade', id_propriedade)\
-            .execute()
-        
-        return jsonify({
-            'success': True,
-            'safras': safras.data if safras.data else []
-        })
-            
-    except Exception as e:
-        print(f"Erro ao obter safras: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500 
-    
-
 @cadastro_propriedade_bp.route('/cadastro_propriedade/atualizar/<int:id_propriedade>', methods=['PUT'])
 @login_required
 def atualizar_propriedade(id_propriedade):
@@ -268,50 +418,100 @@ def atualizar_propriedade(id_propriedade):
     try:
         data = request.get_json()
         
+        # Verificar se a propriedade existe
+        propriedade = supabase.table(SUPABASE_PROPERTIES_TABLE)\
+            .select('*')\
+            .eq('id_propriedade', id_propriedade)\
+            .execute()
+            
+        if not propriedade.data:
+            return jsonify({'success': False, 'error': 'Propriedade não encontrada'}), 404
+        
+        # Obter e tratar dados de longitude e latitude
+        local_long = data.get('local_long', '').strip() if data.get('local_long') else None
+        local_lat = data.get('local_lat', '').strip() if data.get('local_lat') else None
+        
+        # Preparar dados para atualização
         update_data = {
-            'nome_propriedade': data.get('nome_propriedade').upper(),
-            'tamanho_propriedade': float(data.get('tamanho_propriedade')),
-            'respons_propriedade': data.get('respons_propriedade').upper(),
-            'tipo_cultura': int(data.get('tipo_cultura')),
-            'local_long': data.get('local_long'),
-            'local_lat': data.get('local_lat'),
-            'qtd_produzida_total': float(data.get('qtd_produzida_total', 0)),
-            'qtd_produzida_t': float(data.get('qtd_produzida_t', 0)),
-            'tamanho_colido': float(data.get('tamanho_colido', 0)),
-            'nome_talhao': data.get('nome_talhao', '').upper(),
-            'ano_safra': data.get('ano_safra', ''),
+            'nome_propriedade': data.get('nome_propriedade', '').upper(),
+            'tamanho_propriedade': float(data.get('tamanho_propriedade', 0)),
+            'respons_propriedade': data.get('respons_propriedade', '').upper(),
+            'tipo_cultura': int(data.get('tipo_cultura', 1)),
             'data_alteracao': datetime.now().isoformat(),
             'usuario_alteracao': session.get('user_id')
         }
+        
+        # Adicionar longitude e latitude apenas se não estiverem vazios
+        if local_long:
+            update_data['local_long'] = float(local_long)
+        else:
+            update_data['local_long'] = None
+            
+        if local_lat:
+            update_data['local_lat'] = float(local_lat)
+        else:
+            update_data['local_lat'] = None
 
-        supabase.table(SUPABASE_PROPERTIES_TABLE)\
+        # Adicionar logs para debug
+        print(f"DEBUG - Atualizando propriedade {id_propriedade}")
+        print(f"DEBUG - Dados de atualização: {update_data}")
+
+        # Executar atualização
+        result = supabase.table(SUPABASE_PROPERTIES_TABLE)\
             .update(update_data)\
             .eq('id_propriedade', id_propriedade)\
             .execute()
+            
+        print(f"DEBUG - Resultado da atualização: {result.data}")
 
         return jsonify({'success': True, 'message': 'Propriedade atualizada com sucesso!'})
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        tb = traceback.format_exc()
+        print(f"Erro completo ao atualizar propriedade: {tb}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-@cadastro_propriedade_bp.route('/cadastro_propriedade/desativar/<int:id_propriedade>', methods=['POST'])
+@cadastro_propriedade_bp.route('/cadastro_propriedade/excluir/<int:id_propriedade>', methods=['DELETE'])
 @login_required
-def desativar_propriedade(id_propriedade):
-    """Rota para desativar uma propriedade"""
+def excluir_propriedade(id_propriedade):
+    """Rota para excluir permanentemente uma propriedade"""
     try:
-        supabase.table(SUPABASE_PROPERTIES_TABLE)\
-            .update({
-                'status': 'Inativo',
-                'data_desativacao': datetime.now().isoformat(),
-                'usuario_desativacao': session.get('user_id')
-            })\
+        # Verificar se existem safras relacionadas
+        try:
+            safras = supabase.table('cadastro_safra')\
+                .select('id_safra')\
+                .eq('id_propriedade', id_propriedade)\
+                .execute()
+                
+            # Se existirem safras, excluir primeiro
+            if safras.data and len(safras.data) > 0:
+                for safra in safras.data:
+                    supabase.table('cadastro_safra')\
+                        .delete()\
+                        .eq('id_safra', safra['id_safra'])\
+                        .execute()
+                print(f"DEBUG - {len(safras.data)} safras excluídas da propriedade {id_propriedade}")
+        except Exception as e:
+            print(f"Aviso: Erro ao verificar safras (pode ser que a tabela não exista): {str(e)}")
+        
+        # Excluir a propriedade
+        result = supabase.table(SUPABASE_PROPERTIES_TABLE)\
+            .delete()\
             .eq('id_propriedade', id_propriedade)\
             .execute()
+            
+        print(f"DEBUG - Propriedade {id_propriedade} excluída: {result.data}")
 
-        return jsonify({'success': True, 'message': 'Propriedade desativada com sucesso!'})
+        return jsonify({'success': True, 'message': 'Propriedade excluída com sucesso!'})
 
     except Exception as e:
+        tb = traceback.format_exc()
+        print(f"Erro completo ao excluir propriedade: {tb}")
         return jsonify({'error': str(e)}), 500
+
+# Função para registrar o blueprint no aplicativo principal
+def init_app(app):
+    app.register_blueprint(cadastro_propriedade_bp)
 
 if __name__ == '__main__':
     app = Flask(__name__)

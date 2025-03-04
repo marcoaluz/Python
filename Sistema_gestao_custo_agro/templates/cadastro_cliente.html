@@ -309,17 +309,18 @@ function atualizarTabela(clientes) {
             <td>${cliente.endereco}</td>
             <td>${cliente.telefone}</td>
             <td>${cliente.email}</td>
-            <td>${cliente.administrador_alteracao}</td>
             <td>${cliente.tipo_cliente}</td>
             <td>${cliente.status_cliente}</td>
             <td class="text-center">
                 <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#alterarModal" 
-                        onclick="preencherModal('${cliente.cpf_cnpj}', '${cliente.nome_razaosocial}', '${cliente.apelido_nomefantasia}', '${cliente.endereco}', '${cliente.telefone}', '${cliente.email}', '${cliente.tipo_cliente}', '${cliente.administrador_alteracao}', '${cliente.status_cliente}')">
+                        onclick="preencherModal('${cliente.cpf_cnpj}', '${cliente.nome_razaosocial}', '${cliente.apelido_nomefantasia}', '${cliente.endereco}', '${cliente.telefone}', '${cliente.email}', '${cliente.tipo_cliente}',  '${cliente.status_cliente}')">
                     Alterar
                 </button>
-                <button class="btn btn-sm btn-danger" onclick="confirmDelete('${cliente.cpf_cnpj}')">
-                    Deletar
-                </button>
+                <form method="POST" action="/deletar_cliente/${encodeURIComponent(cliente.cpf_cnpj)}" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir este cliente?')">
+                        Deletar
+                    </button>
+                </form>
             </td>
         `;
         tbody.appendChild(linha);
@@ -347,6 +348,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+
+function confirmDelete(cpfCnpj) {
+    if (confirm("Tem certeza que deseja excluir este cliente?")) {
+        // Create a form dynamically
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/deletar_cliente/${encodeURIComponent(cpfCnpj)}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+    return false;
+}
 
 
 
@@ -404,7 +417,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             <th>Endereço</th>
                             <th>Telefone</th>
                             <th>E-mail</th>
-                            <th>Administrador</th>
                             <th>Tipo Cliente</th>
                             <th>Status</th>
                             <th class="text-center">Ações</th>
@@ -419,13 +431,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td>{{ cliente.endereco }}</td>
                             <td>{{ cliente.telefone }}</td>
                             <td>{{ cliente.email }}</td>
-                            <td>{{ cliente.administrador_alteracao }}</td>
                             <td>{{ cliente.tipo_cliente }}</td>
                             <td>{{ cliente.status_cliente }}</td>
                             <td class="text-center">
 
                                 <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#alterarModal" 
-                                        onclick="preencherModal('{{ cliente.cpf_cnpj }}', '{{ cliente.nome_razaosocial }}', '{{ cliente.apelido_nomefantasia }}', '{{ cliente.endereco }}', '{{ cliente.telefone }}', '{{ cliente.email }}', '{{ cliente.tipo_cliente }}', '{{ cliente.administrador_alteracao }}', '{{ cliente.status_cliente }}')">
+                                        onclick="preencherModal('{{ cliente.cpf_cnpj }}', '{{ cliente.nome_razaosocial }}', '{{ cliente.apelido_nomefantasia }}', '{{ cliente.endereco }}', '{{ cliente.telefone }}', '{{ cliente.email }}', '{{ cliente.tipo_cliente }}', '{{ cliente.status_cliente }}')">
                                     Alterar
                                 </button>
 
@@ -495,11 +506,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
 
                                 <div class="col-md-6 mb-3">
-                                    <label for="endereco" class="form-label">Administrador</label>
-                                    <input type="text" class="form-control" id="administrador_alteracao" name="administrador_alteracao" required oninput="this.value = this.value.toUpperCase();">
-                                </div>
-
-                                <div class="col-md-6 mb-3">
                                     <label for="tipo_cliente" class="form-label">Tipo Cliente</label>
                                     <input type="text" class="form-control" id="tipo_cliente" name="tipo_cliente" readonly>
                                 </div>
@@ -560,10 +566,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="mb-3">
                                 <label for="modalTipoCliente" class="form-label">Tipo Cliente</label>
                                 <input type="text" class="form-control" id="modalTipoCliente" name="tipo_cliente" readonly>
-                            </div>
-                            <div class="mb-3">
-                                <label for="modalAdministrador" class="form-label">Administrador</label>
-                                <input type="text" class="form-control" id="modalAdministrador" name="administrador_alteracao">
                             </div>
                             <div class="mb-3">
                                 <label for="modalStatus" class="form-label">Status</label>
