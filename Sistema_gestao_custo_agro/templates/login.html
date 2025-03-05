@@ -5,9 +5,11 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <title>Gestão de Cliente e Propriedades</title>
     
     <!-- Bootstrap para o Spinner -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
@@ -152,7 +154,16 @@
 
 
     <div class="container">
-        <h2>Login</h2>
+
+        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="max-width: 50px; height: auto; margin-right: 15px;">
+            <h2 style="margin: 0; font-size: 18px; font-family: 'Roboto', sans-serif; font-weight: 500; color: #007bff; letter-spacing: 0.5px;">Acesse a sua conta</h2>
+
+
+        </div>
+
+       
+
         <form id="login-form" action="{{ url_for('login.login') }}" method="POST">  
             <div class="form-group">
                 <i class="fas fa-user"></i> <!-- Ícone de usuário -->
