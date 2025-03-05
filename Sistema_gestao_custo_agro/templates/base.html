@@ -49,34 +49,34 @@
         
 
         .sidebar .nav-link span {
-           font-size: 16px;
+           font-size: 15.5px;
 
         }
         .sidebar .nav.flex-column {
-                 display: flex !important;
-                flex-direction: column !important;
-                width: 240px !important;
-                
+                display: flex ;
+                flex-direction: column ;
+                width: 250px ;
+                height: 160px ;
         }
 
       
 
 .sidebar .nav-link {
-    display: block !important;
-    width: 250px !important;
-    height: 40px !important;
+    display: block ;
+    width: 250px ;
+    height: 40px ;
     display: flex;
     align-items: center;
     padding: 0 10px;
     margin: 0;
     box-sizing: border-box;
-    margin-bottom: 5px !important;
+    margin-bottom: 5px ;
 
 }
 
 .sidebar .nav-link i {
-    margin-right: 10px;
-    width: 20px;
+    margin-right: 14px;
+    width: 16px;
     text-align: center;
 }
 
@@ -105,7 +105,7 @@
 <body>
     <!-- Sidebar -->
     <div class="sidebar">
-        <a href="#" class="brand-link">Gestão de Cliente e Propriedades</a>
+        <a href="#" class="brand-link">GCP</a>
         <nav class="nav flex-column">
             <a href="{{ url_for('cadastro_cliente.cadastro_cliente') }}" class="nav-link">
                 <i class="fas fa-user"></i>

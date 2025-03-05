@@ -53,7 +53,7 @@ def supabase_request(method, endpoint, data=None):
         return response.json()  # Retorna o JSON para ser utilizado
     else:
       #  print(f"Error: {response.status_code} - {response.text}")  # Imprime a mensagem de erro
-        return None  # Retorna None em caso de erro
+        return None
     
 
 
@@ -145,12 +145,19 @@ def forgot_password():
 
             # Enviar o e-mail de redefinição de senha
             reset_link = url_for('login.reset_password', token=reset_token, _external=True)
-            send_email(email, 'Redefinir senha', f'Clique no link para redefinir sua senha: {reset_link}')
             
-            flash('E-mail de recuperação enviado!', 'info')
+            try:
+                # Usa a função send_email definida acima
+                send_email(email, 'Redefinir senha', f'Clique no link para redefinir sua senha: {reset_link}')
+                flash('E-mail de recuperação enviado!', 'info')
+            except (smtplib.SMTPServerDisconnected, smtplib.SMTPConnectError, 
+                    smtplib.SMTPResponseException, socket.timeout, 
+                    ConnectionRefusedError, TimeoutError) as e:
+                flash('Não foi possível estabelecer conexão com o servidor de e-mail. Por favor, tente novamente mais tarde.', 'danger')
+            except Exception as e:
+                flash(f'Erro ao enviar e-mail: {e}', 'danger')
         else:
             flash('E-mail não cadastrado!', 'danger')
-
         
         return redirect(url_for('login.login'))  # Redireciona para a página de login
     
