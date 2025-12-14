@@ -8,6 +8,9 @@ menu_bp = Blueprint('menu', __name__)
 def menu():
     if 'logged_in' in session:  # Verifica se o usuário está logado
         #flash('Login realizado com sucesso!', 'success')
+
+    
+        
         return render_template('menu.html')  # Exibe o menu principal
     else:
         return redirect(url_for('login.login'))  # Redireciona para o login se não estiver autenticado

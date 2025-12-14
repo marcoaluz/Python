@@ -91,6 +91,25 @@
             </li>
         </ul>
     </div>
+
+    <div class="dropdown ms-3">
+  <button class="btn btn-outline-success dropdown-toggle" type="button" id="dropdownPropriedade"
+          data-bs-toggle="dropdown" aria-expanded="false">
+    Minhas Propriedades
+  </button>
+  <ul class="dropdown-menu" aria-labelledby="dropdownPropriedade">
+    {% for propriedade in propriedades %}
+      <li><a class="dropdown-item" href="#">{{ propriedade.nome }}</a></li>
+    {% endfor %}
+    {% if propriedades|length == 0 %}
+      <li><a class="dropdown-item disabled" href="#">Nenhuma propriedade vinculada</a></li>
+    {% endif %}
+  </ul>
+</div>
+
+
+
+
 </nav>
 
 <!-- Content Wrapper -->

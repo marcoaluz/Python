@@ -11,90 +11,69 @@
             font-family: Arial, sans-serif;
         }
         .sidebar {
-            width: 250px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100%;
-            background-color: #343a40;
-            color: white;
-            padding-top: 20px;
-        }
-        .sidebar .nav-link {
-            color: #adb5bd;
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            margin: 5px 10px;
-        }
-        .sidebar .nav-link.active, .sidebar .nav-link:hover {
-            color: #ffffff;
-            background-color: #495057;
+        width: 250px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh; /* Mantém o menu lateral na tela inteira */
+        background-color: #343a40;
+        color: white;
+        padding-top: 20px;
+        display: flex;
+        flex-direction: column;
+        z-index: 9999;
+    }
+    .sidebar .brand-link {
+        font-size: 1.25rem;
+        color: #ffffff;
+        padding: 10px;
+        text-align: center;
+        background-color: #212529;
+        margin-bottom: 10px;
+        text-decoration: none;
+    }
+    .sidebar nav.nav.flex-column {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+    .sidebar .nav-link {
+        color: #adb5bd;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        padding: 7px 16px;
+        margin: 2px 0;
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 4px;
+        transition: background 0.2s;
+        background: none;
+    }
+    .sidebar .nav-link.active, .sidebar .nav-link:hover {
+        color: #ffffff;
+        background-color: #495057;
+        text-decoration: none;
+    }
+    .sidebar .nav-link i {
+        margin-right: 14px;
+        width: 18px;
+        text-align: center;
+    }
+
+    .content-wrapper {
+        margin-left: 250px;
+        padding: 20px;
+    }
+    @media (max-width: 768px) {
+        .sidebar {
+            width: 200px;
         }
         .content-wrapper {
-            margin-left: 250px;
-            padding: 20px;
+            margin-left: 200px;
         }
-        .brand-link {
-            font-size: 1.25rem;
-            color: #ffffff;
-            padding: 10px;
-            text-align: center;
-            display: block;
-            background-color: #212529;
-        }
-        .navbar {
-            margin-left: 250px;
-        }
-        
-
-        .sidebar .nav-link span {
-           font-size: 15.5px;
-
-        }
-        .sidebar .nav.flex-column {
-                display: flex ;
-                flex-direction: column ;
-                width: 250px ;
-                height: 160px ;
-        }
-
-      
-
-.sidebar .nav-link {
-    display: block ;
-    width: 250px ;
-    height: 40px ;
-    display: flex;
-    align-items: center;
-    padding: 0 10px;
-    margin: 0;
-    box-sizing: border-box;
-    margin-bottom: 5px ;
-
-}
-
-.sidebar .nav-link i {
-    margin-right: 14px;
-    width: 16px;
-    text-align: center;
-}
-
-.sidebar .nav-link span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-        /* Ajustes gerais para responsividade */
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 200px;
-            }
-            .content-wrapper {
-                margin-left: 200px;
-            }
-        }
+    }
     </style>
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
@@ -109,27 +88,26 @@
         <nav class="nav flex-column">
             <a href="{{ url_for('cadastro_cliente.cadastro_cliente') }}" class="nav-link">
                 <i class="fas fa-user"></i>
-                <span style="font-size: 16px;"> Tela de Cadastro</span>
+                <span>Tela de Cadastro</span>
             </a>
-            <a href="{{ url_for('cadastro_propriedade.index') }}" class="nav-link"> 
-                <i class="fa fa-users" aria-hidden="true"></i>
-                <span style="font-size: 16px;">Cadastro Propriedade</span>
+            <a href="{{ url_for('cadastro_propriedade.index') }}" class="nav-link">
+                <i class="fa fa-users"></i>
+                <span>Cadastro Propriedade</span>
             </a>
-            <a href="{{ url_for('cadastro_estoque.index') }}" class="nav-link"> 
+            <a href="{{ url_for('cadastro_estoque.index') }}" class="nav-link">
                 <i class="fas fa-box"></i>
-                <span style="font-size: 16px;">Cadastro Estoque</span>
+                <span>Cadastro Estoque</span>
             </a>
             <a href="{{ url_for('menu.menu') }}" class="nav-link">
                 <i class="fas fa-home"></i>
-                <span style="font-size: 16px;">Home</span>
+                <span>Home</span>
             </a>
             <a href="/logout" class="nav-link">
                 <i class="fas fa-sign-out-alt"></i>
-                <span style="font-size: 16px;">Sair</span>
+                <span>Sair</span>
             </a>
         </nav>
     </div>
-
     <!-- Navbar -->
    <!--nav class="navbar navbar-expand navbar-light bg-light">
         <div class="container-fluid">
