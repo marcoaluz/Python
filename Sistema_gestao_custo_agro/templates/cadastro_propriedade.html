@@ -72,18 +72,35 @@
                 <!-- Linha de detalhes (expandível) -->
                 <tr id="details-{{ prop.id_propriedade }}" class="detail-row" style="display: none;">
                     <td colspan="9">
-                        <div class="card">
+                        <div class="card mb-3">
                             <div class="card-body bg-light">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h6 class="card-title mb-0">Histórico de Safras</h6>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="cadastrarSafra('{{ prop.id_propriedade }}')">
-                                        <i class="fas fa-plus"></i> Nova Safra
+                                    <h6 class="card-title mb-0">Talhões</h6>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="cadastrarTalhao('{{ prop.id_propriedade }}')">
+                                        <i class="fas fa-plus"></i> Novo Talhão
                                     </button>
                                 </div>
                                 
-                                <div id="safras-{{ prop.id_propriedade }}">
+                                <div id="talhoes-{{ prop.id_propriedade }}">
                                     <div class="alert alert-info">
-                                        Carregando dados de safra...
+                                        Carregando dados de talhões...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-body bg-light">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="card-title mb-0">Funcionários</h6>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="cadastrarFuncionario('{{ prop.id_propriedade }}')">
+                                        <i class="fas fa-plus"></i> Novo Funcionário
+                                    </button>
+                                </div>
+                                
+                                <div id="funcionarios-{{ prop.id_propriedade }}">
+                                    <div class="alert alert-info">
+                                        Carregando dados de funcionários...
                                     </div>
                                 </div>
                             </div>
@@ -115,7 +132,7 @@
 </nav>
 {% endif %}
 
-<!-- Modal de Cadastro -->
+<!-- Modal de Cadastro de Propriedade -->
 <div class="modal fade" id="cadastroModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -185,47 +202,97 @@
     </div>
 </div>
 
-<!-- Modal para Cadastro de Safra -->
-<div class="modal fade" id="safraModal" tabindex="-1">
+<!-- Modal para Cadastro de Talhão -->
+<div class="modal fade" id="talhaoModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Cadastro de Safra</h5>
+                <h5 class="modal-title">Cadastro de Talhão</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="safraForm" onsubmit="return salvarSafra(event)">
-                    <input type="hidden" name="id_propriedade" id="safra_id_propriedade">
-                    <!-- Campo oculto para ID da safra (usado na edição) -->
+                <form id="talhaoForm" onsubmit="return salvarTalhao(event)">
+                    <input type="hidden" name="id_propriedade" id="talhao_id_propriedade">
+                    <!-- Campo oculto para ID do talhão (usado na edição) -->
                     <input type="hidden" name="id_safra">
                     
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Quantidade Produzida Total *</label>
-                            <input type="number" step="0.01" class="form-control" name="qtd_produzida_total" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Quantidade Produzida (t) *</label>
-                            <input type="number" step="0.01" class="form-control" name="qtd_produzida_t" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Tamanho Colhido *</label>
-                            <input type="number" step="0.01" class="form-control" name="tamanho_colido" required>
-                        </div>
-                        <div class="col-md-6">
                             <label class="form-label">Nome do Talhão *</label>
                             <input type="text" class="form-control" name="nome_talhao" required>
+																												  
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Ano Safra *</label>
-                            <input type="text" class="form-control" name="ano_safra" 
-                                   placeholder="Ex: 2023/24" maxlength="7" required>
+                            <label class="form-label">Variedade *</label>
+                            <input type="text" class="form-control" name="variedade" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Plantio *</label>
+                            <input type="date" class="form-control" name="plantio" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Linhas *</label>
+                            <input type="number" class="form-control" name="linha" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Plantas *</label>
+                            <input type="number" class="form-control" name="planta" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Número de Plantas *</label>
+                            <input type="number" class="form-control" name="n_plantas" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Área (ha) *</label>
+                            <input type="number" step="0.01" class="form-control" name="area_ha" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Status *</label>
+                            <select class="form-select" name="status" required>
+                                <option value="">Selecione...</option>
+                                <option value="Produção">Produção</option>
+                                <option value="Formação">Formação</option>
+                            </select>
+                        
+
+                    <div class="modal-footer mt-4">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar Talhão</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Cadastro de Funcionário -->
+<div class="modal fade" id="funcionarioModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cadastro de Funcionário</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="funcionarioForm" onsubmit="return salvarFuncionario(event)">
+                    <input type="hidden" name="id_propriedade" id="funcionario_id_propriedade">
+                    <!-- Campo oculto para ID do funcionário (usado na edição) -->
+                    <input type="hidden" name="id_funcionario">
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nome do Funcionário *</label>
+                            <input type="text" class="form-control" name="nome_funcionario" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Apelido</label>
+                            <input type="text" class="form-control" name="apelido">
                         </div>
                     </div>
 
                     <div class="modal-footer mt-4">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Salvar Safra</button>
+                        <button type="submit" class="btn btn-primary">Salvar Funcionário</button>
                     </div>
                 </form>
             </div>
@@ -347,91 +414,98 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Função modificada para carregar safras com paginação
-async function carregarSafras(idPropriedade, pagina = 1) {
-    const container = document.getElementById(`safras-${idPropriedade}`);
-    const SAFRAS_POR_PAGINA = 5; // Número de safras por página
+// Função modificada para carregar talhões com paginação
+async function carregarTalhoes(idPropriedade, pagina = 1) {
+    const container = document.getElementById(`talhoes-${id_Propriedade}`);
+    const TALHOES_POR_PAGINA = 5; // Número de talhões por página
     
     try {
-        const response = await fetch(`/cadastro_propriedade/safras/${idPropriedade}`);
+        const response = await fetch(`/cadastro_propriedade/safra/${id_Propriedade}`);
         const data = await response.json();
         
-        if (!data.safras || data.safras.length === 0) {
+        if (!data.talhoes || data.talhoes.length === 0) {
             container.innerHTML = `
                 <div class="alert alert-info">
-                    Nenhuma safra cadastrada para esta propriedade. Clique no botão "Nova Safra" para adicionar.
+                    Nenhum talhão cadastrado para esta propriedade. Clique no botão "Novo Talhão" para adicionar.
                 </div>
             `;
             return;
         }
         
-        // Filtrar safras apenas dos últimos 5 anos
+        // Filtrar talhões apenas dos últimos 5 anos
         const anoAtual = new Date().getFullYear();
-        const safrasFiltradas = data.safras.filter(safra => {
+        const talhoesFiltrados = data.talhoes.filter(talhao => {
             // Extrair o primeiro ano da string no formato "2023/24"
-            const anoSafra = parseInt(safra.ano_safra.split('/')[0]);
-            return anoSafra >= (anoAtual - 5);
+            const anoTalhao = parseInt(talhao.ano_safra?.split('/')[0] || '0');
+            return anoTalhao >= (anoAtual - 5) || anoTalhao === 0;
         });
         
-        if (safrasFiltradas.length === 0) {
+        if (talhoesFiltrados.length === 0) {
             container.innerHTML = `
                 <div class="alert alert-info">
-                    Não há safras cadastradas para os últimos 5 anos. Clique no botão "Nova Safra" para adicionar.
+                    Não há talhões cadastrados para os últimos 5 anos. Clique no botão "Novo Talhão" para adicionar.
                 </div>
             `;
             return;
         }
         
-        // Ordenar safras pelo ano (mais recente primeiro)
-        safrasFiltradas.sort((a, b) => {
-            const anoA = parseInt(a.ano_safra.split('/')[0]);
-            const anoB = parseInt(b.ano_safra.split('/')[0]);
+        // Ordenar talhões pelo ano (mais recente primeiro)
+        talhoesFiltrados.sort((a, b) => {
+            const anoA = parseInt(a.ano_safra?.split('/')[0] || '0');
+            const anoB = parseInt(b.ano_safra?.split('/')[0] || '0');
             return anoB - anoA;
         });
         
         // Cálculos de paginação
-        const totalSafras = safrasFiltradas.length;
-        const totalPaginas = Math.ceil(totalSafras / SAFRAS_POR_PAGINA);
+        const totalTalhoes = talhoesFiltrados.length;
+        const totalPaginas = Math.ceil(totalTalhoes / TALHOES_POR_PAGINA);
         
         // Garantir que a página solicitada é válida
         pagina = Math.max(1, Math.min(pagina, totalPaginas));
         
-        // Obter apenas as safras da página atual
-        const inicio = (pagina - 1) * SAFRAS_POR_PAGINA;
-        const fim = Math.min(inicio + SAFRAS_POR_PAGINA, totalSafras);
-        const safrasPaginadas = safrasFiltradas.slice(inicio, fim);
+        // Obter apenas os talhões da página atual
+        const inicio = (pagina - 1) * TALHOES_POR_PAGINA;
+        const fim = Math.min(inicio + TALHOES_POR_PAGINA, totalTalhoes);
+        const talhoesPaginados = talhoesFiltrados.slice(inicio, fim);
         
-        // Criar tabela com as safras paginadas
+        // Criar tabela com os talhões paginados
         let html = `
             <div class="table-responsive">
                 <table class="table table-sm table-bordered">
                     <thead class="table-secondary">
                         <tr>
+                            <th>Nome</th>
+                            <th>Variedade</th>
+                            <th>Área (ha)</th>
+                            <th>Status</th>
                             <th>Ano Safra</th>
-                            <th>Talhão</th>
-                            <th>Qtd. Produzida Total</th>
-                            <th>Qtd. Produzida (t)</th>
-                            <th>Tamanho Colhido</th>
+											
+														 
+													   
+													
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
         `;
         
-        // Adicionar as safras da página atual
-        safrasPaginadas.forEach(safra => {
+        // Adicionar os talhões da página atual
+        talhoesPaginados.forEach(talhao => {
             html += `
                 <tr>
-                    <td>${safra.ano_safra}</td>
-                    <td>${safra.nome_talhao || safra.nome_talha || '-'}</td>
-                    <td>${safra.qtd_produzida_total}</td>
-                    <td>${safra.qtd_produzida_t}</td>
-                    <td>${safra.tamanho_colido}</td>
+                    <td>${talhao.nome_talhao || '-'}</td>
+                    <td>${talhao.variedade || '-'}</td>
+                    <td>${talhao.plantio || '-'}</td>
+                    <td>${talhao.linha || '-'}</td>
+                    <td>${talhao.planta || '-'}</td>
+                    <td>${talhao.area_ha || '-'}</td>
+                    <td>${talhao.status || '-'}</td>
+                    
                     <td>
-                        <button class="btn btn-sm btn-outline-warning" onclick="editarSafra(${safra.id_safra})">
+                        <button class="btn btn-sm btn-outline-warning" onclick="editarTalhao(${talhao.id_safra})">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="excluirSafra(${safra.id_safra})">
+                        <button class="btn btn-sm btn-outline-danger" onclick="excluirTalhao(${talhao.id_safra})">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
@@ -448,14 +522,14 @@ async function carregarSafras(idPropriedade, pagina = 1) {
         // Adicionar controles de paginação se houver mais de uma página
         if (totalPaginas > 1) {
             html += `
-                <nav aria-label="Navegação de safras" class="mt-2">
+                <nav aria-label="Navegação de talhões" class="mt-2">
                     <ul class="pagination pagination-sm justify-content-center">
             `;
             
             // Botão Anterior
             html += `
                 <li class="page-item ${pagina === 1 ? 'disabled' : ''}">
-                    <a class="page-link" href="#" onclick="event.preventDefault(); carregarSafras('${idPropriedade}', ${pagina - 1})" aria-label="Anterior">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); carregarTalhoes('${idPropriedade}', ${pagina - 1})" aria-label="Anterior">
                         <span aria-hidden="true">&laquo;</span>
                     </a>
                 </li>
@@ -465,7 +539,7 @@ async function carregarSafras(idPropriedade, pagina = 1) {
             for (let i = 1; i <= totalPaginas; i++) {
                 html += `
                     <li class="page-item ${i === pagina ? 'active' : ''}">
-                        <a class="page-link" href="#" onclick="event.preventDefault(); carregarSafras('${idPropriedade}', ${i})">
+                        <a class="page-link" href="#" onclick="event.preventDefault(); carregarTalhoes('${idPropriedade}', ${i})">
                             ${i}
                         </a>
                     </li>
@@ -475,7 +549,7 @@ async function carregarSafras(idPropriedade, pagina = 1) {
             // Botão Próximo
             html += `
                 <li class="page-item ${pagina === totalPaginas ? 'disabled' : ''}">
-                    <a class="page-link" href="#" onclick="event.preventDefault(); carregarSafras('${idPropriedade}', ${pagina + 1})" aria-label="Próximo">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); carregarTalhoes('${idPropriedade}', ${pagina + 1})" aria-label="Próximo">
                         <span aria-hidden="true">&raquo;</span>
                     </a>
                 </li>
@@ -485,7 +559,7 @@ async function carregarSafras(idPropriedade, pagina = 1) {
                     </ul>
                 </nav>
                 <div class="text-center text-muted small">
-                    Exibindo ${inicio + 1}-${fim} de ${totalSafras} safras
+                    Exibindo ${inicio + 1}-${fim} de ${totalTalhoes} talhões
                 </div>
             `;
         }
@@ -493,96 +567,184 @@ async function carregarSafras(idPropriedade, pagina = 1) {
         container.innerHTML = html;
         
     } catch (error) {
-        console.error('Erro ao carregar safras:', error);
+        console.error('Erro ao carregar talhões:', error);
         container.innerHTML = `
             <div class="alert alert-danger">
-                Erro ao carregar dados de safra. Por favor, tente novamente.
+                Erro ao carregar dados de talhão. Por favor, tente novamente.
             </div>
         `;
     }
 }
 
-// Modificação na função toggleDetails para carregar safras ao expandir
-function toggleDetails(id) {
-    const detailsRow = document.getElementById(`details-${id}`);
-    const icon = document.getElementById(`icon-${id}`);
+// Função para carregar funcionários com paginação
+async function carregarFuncionarios(idPropriedade, pagina = 1) {
+    const container = document.getElementById(`funcionarios-${idPropriedade}`);
+    const FUNCIONARIOS_POR_PAGINA = 5; // Número de funcionários por página
+
+    try {
+        const response = await fetch(`/cadastro_propriedade/funcionarios/${idPropriedade}`);
+        const data = await response.json();
+        
+        if (!data.funcionarios || data.funcionarios.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    Nenhum funcionário cadastrado para esta propriedade. Clique no botão "Novo Funcionário" para adicionar.
+                </div>
+            `;
+            return;
+        }
+		  
+        
+        // Ordenar funcionários pelo nome
+        const funcionariosOrdenados = [...data.funcionarios].sort((a, b) => 
+            a.nome_funcionario.localeCompare(b.nome_funcionario)
+        );
+
+        // Cálculos de paginação
+        const totalFuncionarios = funcionariosOrdenados.length;
+        const totalPaginas = Math.ceil(totalFuncionarios / FUNCIONARIOS_POR_PAGINA);
+        
+        // Garantir que a página solicitada é válida
+        pagina = Math.max(1, Math.min(pagina, totalPaginas));
+																					  
+
+        // Obter apenas os funcionários da página atual
+        const inicio = (pagina - 1) * FUNCIONARIOS_POR_PAGINA;
+        const fim = Math.min(inicio + FUNCIONARIOS_POR_PAGINA, totalFuncionarios);
+        const funcionariosPaginados = funcionariosOrdenados.slice(inicio, fim);
+		 
+        
+        // Criar tabela com os funcionários paginados
+        let html = `
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Nome</th>
+                            <th>Apelido</th>
+                            <th>Data Criação</th>
+                            <th>Data Alteração</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        // Adicionar os funcionários da página atual
+        funcionariosPaginados.forEach(funcionario => {
+            const dataCriacao = funcionario.data_criacao ? new Date(funcionario.data_criacao).toLocaleDateString() : '-';
+            const dataAlteracao = funcionario.data_alteracao ? new Date(funcionario.data_alteracao).toLocaleDateString() : '-';
+            
+            html += `
+                <tr>
+    <td>${funcionario.nome_funcionario || '-'}</td>
+    <td>${funcionario.apelido || '-'}</td>
+    <td>${dataCriacao}</td>
+    <td>${dataAlteracao}</td>
+    <td>
+        <button class="btn btn-sm btn-outline-warning" onclick="editarFuncionario(${funcionario.id_funcionario})">
+            <i class="fas fa-edit"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="excluirFuncionario(${funcionario.id_funcionario})">
+            <i class="fas fa-trash"></i>
+        </button>
+    </td>
+</tr>
+
+// Continuação do código anterior...
+             `});
+            
+            html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        // Adicionar controles de paginação se houver mais de uma página
+        if (totalPaginas > 1) {
+            html += `
+                <nav aria-label="Navegação de funcionários" class="mt-2">
+                    <ul class="pagination pagination-sm justify-content-center">
+            `;
+            
+            // Botão Anterior
+            html += `
+                <li class="page-item ${pagina === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); carregarFuncionarios('${idPropriedade}', ${pagina - 1})" aria-label="Anterior">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+            `;
+            
+            // Números das páginas
+            for (let i = 1; i <= totalPaginas; i++) {
+                html += `
+                    <li class="page-item ${i === pagina ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="event.preventDefault(); carregarFuncionarios('${idPropriedade}', ${i})">
+                            ${i}
+                        </a>
+                    </li>
+                `;
+            }
+				
+		
+            
+            // Botão Próximo
+            html += `
+                <li class="page-item ${pagina === totalPaginas ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); carregarFuncionarios('${idPropriedade}', ${pagina + 1})" aria-label="Próximo">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+                `;
+        
+                html += `
+    </ul>
+</nav>
+<div class="text-center text-muted small">
+    Exibindo ${inicio + 1}-${fim} de ${totalFuncionarios} funcionários
+</div>
+`; 
+															
+			 
+        }
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Erro ao carregar funcionários:', error);
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                Erro ao carregar dados de funcionários. Por favor, tente novamente.
+            </div>
+        `;
+    }
+	
+				 
+}
+
+// Função para mostrar/ocultar detalhes da propriedade
+function toggleDetails(idPropriedade) {
+    const detailsRow = document.getElementById(`details-${idPropriedade}`);
+    const iconElement = document.getElementById(`icon-${idPropriedade}`);
     
     if (detailsRow.style.display === 'none') {
         detailsRow.style.display = 'table-row';
-        icon.classList.remove('fa-chevron-down');
-        icon.classList.add('fa-chevron-up');
+        iconElement.classList.remove('fa-chevron-down');
+        iconElement.classList.add('fa-chevron-up');
         
-        // Carregar as safras quando expandir
-        carregarSafras(id);
+        // Carregar dados de talhões e funcionários
+        carregarTalhoes(idPropriedade);
+        carregarFuncionarios(idPropriedade);
     } else {
         detailsRow.style.display = 'none';
-        icon.classList.remove('fa-chevron-up');
-        icon.classList.add('fa-chevron-down');
+        iconElement.classList.remove('fa-chevron-up');
+        iconElement.classList.add('fa-chevron-down');
     }
 }
 
-// Função para abrir o modal de cadastro de safra
-function cadastrarSafra(idPropriedade) {
-    // Limpa o formulário
-    document.getElementById('safraForm').reset();
-    
-    // Define o ID da propriedade no formulário
-    document.getElementById('safra_id_propriedade').value = idPropriedade;
-    
-    // Abre o modal
-    new bootstrap.Modal(document.getElementById('safraModal')).show();
-}
 
-// Função para salvar os dados da safra
-async function salvarSafra(event) {
-    event.preventDefault();
-    
-    try {
-        const formData = new FormData(event.target);
-        const idPropriedade = formData.get('id_propriedade');
-        
-        // Criando um objeto com os dados do formulário
-        const dadosSafra = {
-            id_propriedade: idPropriedade,
-            qtd_produzida_total: formData.get('qtd_produzida_total'),
-            qtd_produzida_t: formData.get('qtd_produzida_t'),
-            tamanho_colido: formData.get('tamanho_colido'),
-            nome_talhao: formData.get('nome_talhao'),
-            ano_safra: formData.get('ano_safra')
-        };
-        
-        // Enviando os dados para o servidor
-        const response = await fetch('/cadastro_propriedade/salvar_safra', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(dadosSafra)
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            // Fecha o modal
-            document.getElementById('safraModal').querySelector('.btn-close').click();
-            
-            // Exibe mensagem de sucesso
-            alert(result.message || 'Safra cadastrada com sucesso!');
-            
-            // Recarrega a página para atualizar os dados
-            window.location.reload();
-        } else {
-            alert(result.error || 'Erro ao cadastrar safra');
-        }
-    } catch (error) {
-        console.error('Erro ao cadastrar safra:', error);
-        alert('Erro ao cadastrar safra. Verifique o console para mais detalhes.');
-    }
-    
-    return false;
-}
-
-// Atualização da função salvarPropriedade para não incluir campos de safra
+// Função para salvar propriedade
 async function salvarPropriedade(event) {
     event.preventDefault();
     
@@ -665,8 +827,220 @@ async function salvarPropriedade(event) {
     return false;
 }
 
-// Editar propriedade
+// Função para cadastrar talhão
+function cadastrarTalhao(idPropriedade) {
+    const form = document.getElementById('talhaoForm');
+    form.reset();
+    
+    // Definir ID da propriedade no formulário
+    document.getElementById('talhao_id_propriedade').value = idPropriedade;
+    
+    // Limpar ID do talhão (para garantir que é um novo registro)
+    form.querySelector('input[name="id_safra"]').value = '';
+    
+    // Abrir o modal
+    const talhaoModal = new bootstrap.Modal(document.getElementById('talhaoModal'));
+    talhaoModal.show();
+}
+
+// Função para salvar talhão
+async function salvarTalhao(event) {
+    event.preventDefault();
+    
+    const form = document.getElementById('talhaoForm');
+    const formData = new FormData(form);
+    const dados = Object.fromEntries(formData);
+    
+    const btnSalvar = form.querySelector('button[type="submit"]');
+    btnSalvar.disabled = true;
+    btnSalvar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando...';
+    
+    try {
+									 
+															 
+		
+														
+							
+										  
+																	 
+															 
+														   
+													 
+												
+		  
+		
+											
+        const response = await fetch('/cadastro_propriedade/salvar_safra', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dados)
+        });
+															
+        if (!response.ok) {
+            throw new Error('Erro ao salvar talhão');
+							   
+        }
+        
+        // Obter ID da propriedade para recarregar os talhões
+        const idPropriedade = dados.id_propriedade;
+																					 
+																	  
+        
+							 
+        // Fechar o modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('talhaoModal'));
+        modal.hide();
+													
+		 
+        
+        // Perguntar se deseja cadastrar outro talhão
+        if (confirm('Talhão salvo com sucesso! Deseja cadastrar outro talhão para esta propriedade?')) {
+            cadastrarTalhao(idPropriedade);
+        } else if (confirm('Deseja cadastrar um funcionário para esta propriedade?')) {
+            cadastrarFuncionario(idPropriedade);
+        } else {
+            // Recarregar os talhões
+            carregarTalhoes(idPropriedade);
+        }
+        
+						  
+																		  
+		
+    } catch (error) {
+        console.error('Erro ao salvar talhão:', error);
+        alert('Erro ao salvar talhão. Por favor, tente novamente.');
+    } finally {
+        btnSalvar.disabled = false;
+        btnSalvar.innerHTML = 'Salvar Talhão';
+    }
+    
+    return false;
+}
+
+// Função para cadastrar funcionário
+function cadastrarFuncionario(idPropriedade) {
+    const form = document.getElementById('funcionarioForm');
+    form.reset();
+	 
+    
+    // Definir ID da propriedade no formulário
+    document.getElementById('funcionario_id_propriedade').value = idPropriedade;
+    
+    // Limpar ID do funcionário (para garantir que é um novo registro)
+    form.querySelector('input[name="id_funcionario"]').value = '';
+    
+    // Abrir o modal
+    const funcionarioModal = new bootstrap.Modal(document.getElementById('funcionarioModal'));
+    funcionarioModal.show();
+ 
+}
+
+// Função para salvar funcionário
+async function salvarFuncionario(event) {
+    event.preventDefault();
+    
+    const form = document.getElementById('funcionarioForm');
+    const formData = new FormData(form);
+    const dados = Object.fromEntries(formData);
+    
+    const btnSalvar = form.querySelector('button[type="submit"]');
+    btnSalvar.disabled = true;
+    btnSalvar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando...';
+    
+    try {
+        const response = await fetch('/cadastro_propriedade/salvar_funcionario', {							   
+            method: 'POST',
+
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dados)
+        });
+        
+							 
+        if (!response.ok) {
+            throw new Error('Erro ao salvar funcionário');
+						 
+        }
+        
+        // Obter ID da propriedade para recarregar os funcionários
+        const idPropriedade = dados.id_propriedade;
+						
+        
+        // Fechar o modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('funcionarioModal'));
+        modal.hide();
+        
+        // Perguntar se deseja cadastrar outro funcionário
+        if (confirm('Funcionário salvo com sucesso! Deseja cadastrar outro funcionário para esta propriedade?')) {
+            cadastrarFuncionario(idPropriedade);
+									 
+									  
+			   
+			
+							   
+											   
+							   
+						  
+													  
+				  
+											  
+			   
+			
+												 
+			
+								 
+								
+																							 
+																			   
+										 
+					
+																	   
+			 
+        } else {
+            // Recarregar os funcionários
+            carregarFuncionarios(idPropriedade);
+							
+			
+								   
+											   
+							   
+							  
+			   
+			
+												 
+			
+								 
+								
+																							 
+				
+													 
+																										   
+														  
+						
+																						 
+				 
+					
+																	
+			 
+        }
+        
+    } catch (error) {
+        console.error('Erro ao salvar funcionário:', error);
+        alert('Erro ao salvar funcionário. Por favor, tente novamente.');
+    } finally {
+        btnSalvar.disabled = false;
+        btnSalvar.innerHTML = 'Salvar Funcionário';
+    }
+    
+    return false;
+}
+
+// Funções para editar registros
 async function editarPropriedade(id) {
+
     try {
         const response = await fetch(`/cadastro_propriedade/propriedade/${id}`);
         const data = await response.json();
@@ -706,176 +1080,224 @@ async function editarPropriedade(id) {
     }
 }
 
-// Desativar propriedade
-async function excluirPropriedade(id) {
-    if (!confirm('ATENÇÃO: Esta ação excluirá permanentemente a propriedade e todas as safras relacionadas. Esta operação não pode ser desfeita. Deseja continuar?')) {
-        return;
-    }
 
-    try {
-        const response = await fetch(`/cadastro_propriedade/excluir/${id}`, {
-            method: 'DELETE'
-        });
 
-        const result = await response.json();
-        
-        if (result.success) {
-            alert(result.message);
-            window.location.reload();
-        } else {
-            alert(result.error || 'Erro ao excluir propriedade');
-        }
-    } catch (error) {
-        console.error('Erro ao excluir:', error);
-        alert('Erro ao excluir propriedade. Verifique o console para mais detalhes.');
-    }
-}
-
-// FRONTEND: Funções JavaScript para editar e excluir safra
-
-// Função para editar safra
-async function editarSafra(idSafra) {
-    try {
-        // Carregar os dados da safra
-        const response = await fetch(`/cadastro_propriedade/safra/${idSafra}`);
-        const data = await response.json();
-        
-        if (!data.success || !data.safra) {
-            alert('Erro ao carregar dados da safra.');
-            return;
-        }
-        
-        const safra = data.safra;
-        
-        // Preencher o formulário com os dados da safra
-        const form = document.getElementById('safraForm');
-        
-        // Adicionar campo oculto para o ID da safra se não existir
-        let idSafraField = form.querySelector('input[name="id_safra"]');
-        if (!idSafraField) {
-            idSafraField = document.createElement('input');
-            idSafraField.type = 'hidden';
-            idSafraField.name = 'id_safra';
-            form.appendChild(idSafraField);
-        }
-        
-        // Preencher os campos do formulário
-        idSafraField.value = safra.id_safra;
-        document.getElementById('safra_id_propriedade').value = safra.id_propriedade;
-        form.querySelector('input[name="qtd_produzida_total"]').value = safra.qtd_produzida_total;
-        form.querySelector('input[name="qtd_produzida_t"]').value = safra.qtd_produzida_t;
-        form.querySelector('input[name="tamanho_colido"]').value = safra.tamanho_colido;
-        form.querySelector('input[name="nome_talhao"]').value = safra.nome_talhao;
-        form.querySelector('input[name="ano_safra"]').value = safra.ano_safra;
-        
-        // Alterar o título do modal para indicar que é edição
-        const modalTitle = document.querySelector('#safraModal .modal-title');
-        if (modalTitle) {
-            modalTitle.textContent = 'Editar Safra';
-        }
-        
-        // Alterar o texto do botão
-        const btnSalvar = document.querySelector('#safraForm .btn-primary');
-        if (btnSalvar) {
-            btnSalvar.textContent = 'Atualizar Safra';
-        }
-        
-        // Mostrar o modal
-        new bootstrap.Modal(document.getElementById('safraModal')).show();
-        
-    } catch (error) {
-        console.error('Erro ao carregar safra:', error);
-        alert('Erro ao carregar dados da safra. Verifique o console para mais detalhes.');
-    }
-}
-
-// Função para excluir safra
-async function excluirSafra(idSafra) {
-    if (!confirm('Tem certeza que deseja excluir esta safra? Esta operação não pode ser desfeita.')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/cadastro_propriedade/safra/${idSafra}`, {
-            method: 'DELETE'
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            alert(result.message || 'Safra excluída com sucesso!');
-            window.location.reload();
-        } else {
-            alert(result.error || 'Erro ao excluir safra');
-        }
-    } catch (error) {
-        console.error('Erro ao excluir safra:', error);
-        alert('Erro ao excluir safra. Verifique o console para mais detalhes.');
-    }
-}
-
-// Atualização da função salvarSafra para lidar com edição
-async function salvarSafra(event) {
-    event.preventDefault();
-    
-    try {
-        const form = event.target;
-        const formData = new FormData(form);
-        const idSafra = formData.get('id_safra');
-        const idPropriedade = formData.get('id_propriedade');
-        
-        // Criando um objeto com os dados do formulário
-        const dadosSafra = {
-            id_propriedade: idPropriedade,
-            qtd_produzida_total: formData.get('qtd_produzida_total'),
-            qtd_produzida_t: formData.get('qtd_produzida_t'),
-            tamanho_colido: formData.get('tamanho_colido'),
-            nome_talhao: formData.get('nome_talhao'),
-            ano_safra: formData.get('ano_safra')
-        };
-        
-        let url, method;
-        
-        if (idSafra) {
-            // É uma edição
-            url = `/cadastro_propriedade/atualizar_safra/${idSafra}`;
-            method = 'PUT';
-            dadosSafra.id_safra = idSafra;
-        } else {
-            // É um novo cadastro
-            url = '/cadastro_propriedade/salvar_safra';
-            method = 'POST';
-        }
-        
-        // Enviando os dados para o servidor
-        const response = await fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(dadosSafra)
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            // Fecha o modal
-            document.getElementById('safraModal').querySelector('.btn-close').click();
+function editarTalhao(id_safra) {
+    fetch(`/cadastro_propriedade/obter_talhao/${id_safra}`)
+        .then(response => response.json())
+        .then(data => {
+            const form = document.getElementById('talhaoForm');
             
-            // Exibe mensagem de sucesso
-            alert(result.message || (idSafra ? 'Safra atualizada com sucesso!' : 'Safra cadastrada com sucesso!'));
+            // Preencher formulário com dados do talhão
+            Object.keys(data).forEach(key => {
+                if (form.elements[key]) {
+                    form.elements[key].value = data[key];
+                }
+            });
             
-            // Recarrega a página para atualizar os dados
-            window.location.reload();
-        } else {
-            alert(result.error || 'Erro ao processar safra');
-        }
-    } catch (error) {
-        console.error('Erro ao processar safra:', error);
-        alert('Erro ao processar safra. Verifique o console para mais detalhes.');
+            // Abrir modal
+            const modal = new bootstrap.Modal(document.getElementById('talhaoModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Erro ao obter dados do talhão:', error);
+            alert('Erro ao obter dados do talhão. Por favor, tente novamente.');
+        });
+
+											 
+		
+							 
+								  
+									 
+				
+																 
+		 
+					 
+												 
+																					  
+	 
+}
+
+function editarFuncionario(idFuncionario) {
+    fetch(`/cadastro_propriedade/obter_funcionario/${idFuncionario}`)
+        .then(response => response.json())
+        .then(data => {
+            const form = document.getElementById('funcionarioForm');
+            
+            // Preencher formulário com dados do funcionário
+            Object.keys(data).forEach(key => {
+                if (form.elements[key]) {
+                    form.elements[key].value = data[key];
+                }
+            });
+            
+            // Abrir modal
+            const modal = new bootstrap.Modal(document.getElementById('funcionarioModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Erro ao obter dados do funcionário:', error);
+            alert('Erro ao obter dados do funcionário. Por favor, tente novamente.');
+        });
+}
+
+// Funções para excluir registros
+function excluirPropriedade(idPropriedade) {
+    if (confirm('Tem certeza que deseja excluir esta propriedade? Esta ação não pode ser desfeita.')) {
+        fetch(`/cadastro_propriedade/excluir/${idPropriedade}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert(data.message || 'Erro ao excluir propriedade.');
+								 
+		
+														
+														  
+		
+																	
+																		
+							
+														   
+										 
+										   
+										   
+		 
+		
+											 
+											
+																					 
+																								  
+																						  
+																						
+																				  
+																			  
+		
+																  
+																			  
+						 
+													
+		 
+		
+									
+																			
+						
+													  
+            }
+        })
+						  
+																		  
+		
+        .catch(error => {
+            console.error('Erro ao excluir propriedade:', error);
+            alert('Erro ao excluir propriedade. Por favor, tente novamente.');
+        });
     }
-    
-    return false;
+}
+
+							  
+function excluirTalhao(id_safra) {
+    if (confirm('Tem certeza que deseja excluir este talhão? Esta ação não pode ser desfeita.')) {
+			   
+	 
+	
+		 
+        fetch(`/cadastro_propriedade/excluir_talhao/${id_safra}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Recarregar talhões da propriedade
+                carregarTalhoes(data.id_propriedade);
+            } else {
+                alert(data.message || 'Erro ao excluir talhão.');
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao excluir talhão:', error);
+            alert('Erro ao excluir talhão. Por favor, tente novamente.');
+        });
+		
+											 
+		
+							 
+																	
+									 
+				
+														   
+		 
+					 
+													   
+																				
+    }
+}
+
+function excluirFuncionario(idFuncionario) {
+    if (confirm('Tem certeza que deseja excluir este funcionário? Esta ação não pode ser desfeita.')) {
+        fetch(`/cadastro_propriedade/excluir_funcionario/${idFuncionario}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Recarregar funcionários da propriedade
+                carregarFuncionarios(data.id_propriedade);
+														
+							
+										  
+																	 
+															 
+														   
+													 
+												
+		  
+		
+						
+		
+					  
+							  
+																	 
+						   
+										  
+            } else {
+                alert(data.message || 'Erro ao excluir funcionário.');
+													   
+							
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao excluir funcionário:', error);
+            alert('Erro ao excluir funcionário. Por favor, tente novamente.');
+					  
+												   
+			  
+											
+        });
+		
+											 
+		
+							 
+							
+																					  
+			
+										
+																												   
+			
+														  
+									 
+				
+															 
+		 
+					 
+														 
+																				  
+    }
+	
+				 
 }
 
 </script>

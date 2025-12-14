@@ -1,0 +1,882 @@
+{% extends "base.html" %}
+{% block title %}Cadastro de Propriedade{% endblock %}
+{% block content %}
+
+
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestão de Propriedades</h2>  
+    <div class="d-flex gap-3">
+        <!-- Form de pesquisa -->
+        <form action="{{ url_for('cadastro_propriedade.index') }}" method="GET" class="d-flex gap-2">
+            <input type="text" class="form-control" name="query" value="{{ search_query|default('') }}" placeholder="Pesquisar...">
+            <button type="submit" class="btn btn-secondary">Buscar</button>
+        </form>
+        
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cadastroModal">
+            Nova Propriedade
+        </button>
+    </div>
+</div>
+
+<!-- Tabela de Propriedades -->
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th width="50"></th>
+                <th>CPF/CNPJ</th>
+                <th>Nome/Razão Social</th>
+                <th>Nome Propriedade</th>
+                <th>Tamanho</th>
+                <th>Responsável</th>
+                <th>Tipo Cultura</th>
+                <th>Status</th>
+                <th width="150">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if propriedades and propriedades|length > 0 %}
+                {% for prop in propriedades %}
+                <tr>
+                    <td>
+                        <button class="btn btn-sm btn-outline-info" onclick="toggleDetails('{{ prop.id_propriedade }}')">
+                            <i class="fas fa-chevron-down" id="icon-{{ prop.id_propriedade }}"></i>
+                        </button>
+                    </td>
+                    <td>{{ prop.cpf_cnpj_cliente }}</td>
+                    <td>{{ prop.nome_razaosocial }}</td>
+                    <td>{{ prop.nome_propriedade }}</td>
+                    <td>{{ prop.tamanho_propriedade }}</td>
+                    <td>{{ prop.respons_propriedade }}</td>
+                    <td>
+                        {% if prop.tipo_cultura == 1 %}
+                            Café
+                        {% elif prop.tipo_cultura == 2 %}
+                            Cereais
+                        {% else %}
+                            Café/Cereais
+                        {% endif %}
+                    </td>
+                    <td>{{ prop.status }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="editarPropriedade('{{ prop.id_propriedade }}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="excluirPropriedade('{{ prop.id_propriedade }}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+
+                <!-- Linha de detalhes (expandível) -->
+                <tr id="details-{{ prop.id_propriedade }}" class="detail-row" style="display: none;">
+                    <td colspan="9">
+                        <div class="card">
+                            <div class="card-body bg-light">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="card-title mb-0">Histórico de Safras</h6>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="cadastrarSafra('{{ prop.id_propriedade }}')">
+                                        <i class="fas fa-plus"></i> Nova Safra
+                                    </button>
+                                </div>
+                                
+                                <div id="safras-{{ prop.id_propriedade }}">
+                                    <div class="alert alert-info">
+                                        Carregando dados de safra...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="9" class="text-center">Nenhuma propriedade encontrada.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Paginação -->
+{% if total_pages is defined and total_pages > 1 %}
+<nav aria-label="Navegação">
+    <ul class="pagination justify-content-center">
+        {% for page in range(1, total_pages + 1) %}
+        <li class="page-item {% if page == current_page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for('cadastro_propriedade.index', page=page, query=search_query|default('')) }}">
+                {{ page }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Modal de Cadastro -->
+<div class="modal fade" id="cadastroModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nova Propriedade</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="propriedadeForm" onsubmit="return salvarPropriedade(event)">
+                    <!-- Campo oculto para ID da propriedade (usado na edição) -->
+                    <input type="hidden" name="id_propriedade">
+                    
+                    <div class="row g-3">
+                        <!-- Dados do Cliente -->
+                        <div class="col-md-6">
+                            <label class="form-label">CPF/CNPJ Cliente *</label>
+                            <input type="text" class="form-control" name="cpf_cnpj_cliente" required
+                                   onkeyup="buscarCliente(this.value)" autocomplete="off">
+                            <!-- A div de sugestões será inserida aqui pelo JavaScript -->
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nome/Razão Social</label>
+                            <input type="text" class="form-control" name="nome_razaosocial" readonly>
+                        </div>
+
+                        <!-- Dados da Propriedade -->
+                        <div class="col-md-6">
+                            <label class="form-label">Nome da Propriedade *</label>
+                            <input type="text" class="form-control" name="nome_propriedade" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tamanho da Propriedade *</label>
+                            <input type="number" step="0.01" class="form-control" name="tamanho_propriedade" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Responsável *</label>
+                            <input type="text" class="form-control" name="respons_propriedade" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Cultura *</label>
+                            <select class="form-select" name="tipo_cultura" required>
+                                <option value="">Selecione...</option>
+                                <option value="1">Café</option>
+                                <option value="2">Cereais</option>
+                                <option value="3">Café/Cereais</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Longitude</label>
+                            <input type="text" class="form-control" name="local_long">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Latitude</label>
+                            <input type="text" class="form-control" name="local_lat">
+                        </div>
+                    </div>
+
+                    <div class="modal-footer mt-4">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btnSalvar">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Cadastro de Safra -->
+<div class="modal fade" id="safraModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cadastro de Safra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="safraForm" onsubmit="return salvarSafra(event)">
+                    <input type="hidden" name="id_propriedade" id="safra_id_propriedade">
+                    <!-- Campo oculto para ID da safra (usado na edição) -->
+                    <input type="hidden" name="id_safra">
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Quantidade Produzida Total *</label>
+                            <input type="number" step="0.01" class="form-control" name="qtd_produzida_total" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Quantidade Produzida (t) *</label>
+                            <input type="number" step="0.01" class="form-control" name="qtd_produzida_t" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tamanho Colhido *</label>
+                            <input type="number" step="0.01" class="form-control" name="tamanho_colido" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nome do Talhão *</label>
+                            <input type="text" class="form-control" name="nome_talhao" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Ano Safra *</label>
+                            <input type="text" class="form-control" name="ano_safra" 
+                                   placeholder="Ex: 2023/24" maxlength="7" required>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer mt-4">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar Safra</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Buscar cliente com sugestões
+function buscarCliente(termo) {
+    // Limpa o campo se o termo for muito curto
+    if (!termo || termo.length < 3) {
+        document.querySelector('input[name="nome_razaosocial"]').value = '';
+        
+        // Esconde a lista de sugestões se estiver visível
+        const sugestoes = document.getElementById('clienteSugestoes');
+        if (sugestoes) {
+            sugestoes.style.display = 'none';
+        }
+        return;
+    }
+
+    fetch(`/buscar_clientes?query=${encodeURIComponent(termo)}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro ao buscar clientes');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Criar ou limpar div de sugestões
+            let sugestoes = document.getElementById('clienteSugestoes');
+            if (!sugestoes) {
+                // Criar a div de sugestões se não existir
+                sugestoes = document.createElement('div');
+                sugestoes.id = 'clienteSugestoes';
+                sugestoes.className = 'list-group position-absolute w-100 shadow-sm';
+                sugestoes.style.zIndex = '1000';
+                
+                // Inserir após o campo de CPF/CNPJ
+                const cpfCnpjInput = document.querySelector('input[name="cpf_cnpj_cliente"]');
+                cpfCnpjInput.parentNode.style.position = 'relative';
+                cpfCnpjInput.parentNode.appendChild(sugestoes);
+            } else {
+                // Limpar sugestões existentes
+                sugestoes.innerHTML = '';
+            }
+            
+            if (data.length === 0) {
+                // Se não encontrou resultados
+                sugestoes.style.display = 'none';
+                document.querySelector('input[name="nome_razaosocial"]').value = '';
+                return;
+            }
+            
+            // Exibir sugestões
+            sugestoes.style.display = 'block';
+            
+            // Adicionar cada cliente encontrado à lista de sugestões
+            data.forEach(cliente => {
+                const item = document.createElement('a');
+                item.className = 'list-group-item list-group-item-action';
+                item.href = '#';
+                item.textContent = `${cliente.cpf_cnpj} - ${cliente.nome_razaosocial}`;
+                
+                // Ao clicar em uma sugestão, preencher os campos
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    document.querySelector('input[name="cpf_cnpj_cliente"]').value = cliente.cpf_cnpj;
+                    document.querySelector('input[name="nome_razaosocial"]').value = cliente.nome_razaosocial;
+                    sugestoes.style.display = 'none';
+                });
+                
+                sugestoes.appendChild(item);
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao buscar clientes:', error);
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Configuração do formulário de busca
+    const searchForm = document.querySelector('form[action="{{ url_for("cadastro_propriedade.index") }}"]');
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const query = this.querySelector('input[name="query"]').value.trim();
+            window.location.href = `{{ url_for('cadastro_propriedade.index') }}?query=${encodeURIComponent(query)}`;
+        });
+    }
+    
+    // Adicionar estilos CSS para a lista de sugestões
+    const style = document.createElement('style');
+    style.textContent = `
+        #clienteSugestoes {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 5px;
+        }
+        #clienteSugestoes .list-group-item {
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        #clienteSugestoes .list-group-item:hover {
+            background-color: #f8f9fa;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Adicionar evento para fechar sugestões ao clicar fora
+    document.addEventListener('click', function(e) {
+        const sugestoes = document.getElementById('clienteSugestoes');
+        const cpfCnpjInput = document.querySelector('input[name="cpf_cnpj_cliente"]');
+        
+        if (sugestoes && !sugestoes.contains(e.target) && e.target !== cpfCnpjInput) {
+            sugestoes.style.display = 'none';
+        }
+    });
+});
+
+// Função modificada para carregar safras com paginação
+async function carregarSafras(idPropriedade, pagina = 1) {
+    const container = document.getElementById(`safras-${idPropriedade}`);
+    const SAFRAS_POR_PAGINA = 5; // Número de safras por página
+    
+    try {
+        const response = await fetch(`/cadastro_propriedade/safras/${idPropriedade}`);
+        const data = await response.json();
+        
+        if (!data.safras || data.safras.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    Nenhuma safra cadastrada para esta propriedade. Clique no botão "Nova Safra" para adicionar.
+                </div>
+            `;
+            return;
+        }
+        
+        // Filtrar safras apenas dos últimos 5 anos
+        const anoAtual = new Date().getFullYear();
+        const safrasFiltradas = data.safras.filter(safra => {
+            // Extrair o primeiro ano da string no formato "2023/24"
+            const anoSafra = parseInt(safra.ano_safra.split('/')[0]);
+            return anoSafra >= (anoAtual - 5);
+        });
+        
+        if (safrasFiltradas.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    Não há safras cadastradas para os últimos 5 anos. Clique no botão "Nova Safra" para adicionar.
+                </div>
+            `;
+            return;
+        }
+        
+        // Ordenar safras pelo ano (mais recente primeiro)
+        safrasFiltradas.sort((a, b) => {
+            const anoA = parseInt(a.ano_safra.split('/')[0]);
+            const anoB = parseInt(b.ano_safra.split('/')[0]);
+            return anoB - anoA;
+        });
+        
+        // Cálculos de paginação
+        const totalSafras = safrasFiltradas.length;
+        const totalPaginas = Math.ceil(totalSafras / SAFRAS_POR_PAGINA);
+        
+        // Garantir que a página solicitada é válida
+        pagina = Math.max(1, Math.min(pagina, totalPaginas));
+        
+        // Obter apenas as safras da página atual
+        const inicio = (pagina - 1) * SAFRAS_POR_PAGINA;
+        const fim = Math.min(inicio + SAFRAS_POR_PAGINA, totalSafras);
+        const safrasPaginadas = safrasFiltradas.slice(inicio, fim);
+        
+        // Criar tabela com as safras paginadas
+        let html = `
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Ano Safra</th>
+                            <th>Talhão</th>
+                            <th>Qtd. Produzida Total</th>
+                            <th>Qtd. Produzida (t)</th>
+                            <th>Tamanho Colhido</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        // Adicionar as safras da página atual
+        safrasPaginadas.forEach(safra => {
+            html += `
+                <tr>
+                    <td>${safra.ano_safra}</td>
+                    <td>${safra.nome_talhao || safra.nome_talha || '-'}</td>
+                    <td>${safra.qtd_produzida_total}</td>
+                    <td>${safra.qtd_produzida_t}</td>
+                    <td>${safra.tamanho_colido}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-warning" onclick="editarSafra(${safra.id_safra})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="excluirSafra(${safra.id_safra})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        // Adicionar controles de paginação se houver mais de uma página
+        if (totalPaginas > 1) {
+            html += `
+                <nav aria-label="Navegação de safras" class="mt-2">
+                    <ul class="pagination pagination-sm justify-content-center">
+            `;
+            
+            // Botão Anterior
+            html += `
+                <li class="page-item ${pagina === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); carregarSafras('${idPropriedade}', ${pagina - 1})" aria-label="Anterior">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+            `;
+            
+            // Números das páginas
+            for (let i = 1; i <= totalPaginas; i++) {
+                html += `
+                    <li class="page-item ${i === pagina ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="event.preventDefault(); carregarSafras('${idPropriedade}', ${i})">
+                            ${i}
+                        </a>
+                    </li>
+                `;
+            }
+            
+            // Botão Próximo
+            html += `
+                <li class="page-item ${pagina === totalPaginas ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); carregarSafras('${idPropriedade}', ${pagina + 1})" aria-label="Próximo">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            `;
+            
+            html += `
+                    </ul>
+                </nav>
+                <div class="text-center text-muted small">
+                    Exibindo ${inicio + 1}-${fim} de ${totalSafras} safras
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Erro ao carregar safras:', error);
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                Erro ao carregar dados de safra. Por favor, tente novamente.
+            </div>
+        `;
+    }
+}
+
+// Modificação na função toggleDetails para carregar safras ao expandir
+function toggleDetails(id) {
+    const detailsRow = document.getElementById(`details-${id}`);
+    const icon = document.getElementById(`icon-${id}`);
+    
+    if (detailsRow.style.display === 'none') {
+        detailsRow.style.display = 'table-row';
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+        
+        // Carregar as safras quando expandir
+        carregarSafras(id);
+    } else {
+        detailsRow.style.display = 'none';
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+    }
+}
+
+// Função para abrir o modal de cadastro de safra
+function cadastrarSafra(idPropriedade) {
+    // Limpa o formulário
+    document.getElementById('safraForm').reset();
+    
+    // Define o ID da propriedade no formulário
+    document.getElementById('safra_id_propriedade').value = idPropriedade;
+    
+    // Abre o modal
+    new bootstrap.Modal(document.getElementById('safraModal')).show();
+}
+
+// Função para salvar os dados da safra
+async function salvarSafra(event) {
+    event.preventDefault();
+    
+    try {
+        const formData = new FormData(event.target);
+        const idPropriedade = formData.get('id_propriedade');
+        
+        // Criando um objeto com os dados do formulário
+        const dadosSafra = {
+            id_propriedade: idPropriedade,
+            qtd_produzida_total: formData.get('qtd_produzida_total'),
+            qtd_produzida_t: formData.get('qtd_produzida_t'),
+            tamanho_colido: formData.get('tamanho_colido'),
+            nome_talhao: formData.get('nome_talhao'),
+            ano_safra: formData.get('ano_safra')
+        };
+        
+        // Enviando os dados para o servidor
+        const response = await fetch('/cadastro_propriedade/salvar_safra', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dadosSafra)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Fecha o modal
+            document.getElementById('safraModal').querySelector('.btn-close').click();
+            
+            // Exibe mensagem de sucesso
+            alert(result.message || 'Safra cadastrada com sucesso!');
+            
+            // Recarrega a página para atualizar os dados
+            window.location.reload();
+        } else {
+            alert(result.error || 'Erro ao cadastrar safra');
+        }
+    } catch (error) {
+        console.error('Erro ao cadastrar safra:', error);
+        alert('Erro ao cadastrar safra. Verifique o console para mais detalhes.');
+    }
+    
+    return false;
+}
+
+// Atualização da função salvarPropriedade para não incluir campos de safra
+async function salvarPropriedade(event) {
+    event.preventDefault();
+    
+    try {
+        const form = event.target;
+        const formData = new FormData(form);
+        
+        // Verifica o cliente
+        if (!formData.get('nome_razaosocial')) {
+            alert('Por favor, selecione um cliente válido.');
+            return false;
+        }
+        
+        // Verificar se é uma edição (tem id_propriedade) ou novo cadastro
+        const idPropriedade = formData.get('id_propriedade');
+        let url, method;
+        
+        if (idPropriedade) {
+            // É uma edição - usa a rota de atualizar
+            url = `/cadastro_propriedade/atualizar/${idPropriedade}`;
+            method = 'PUT';
+            
+            // Converter FormData para JSON para a requisição PUT
+            const jsonData = {};
+            formData.forEach((value, key) => {
+                jsonData[key] = value;
+            });
+            
+            // Enviar como JSON
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(jsonData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Fecha o modal
+                document.getElementById('cadastroModal').querySelector('.btn-close').click();
+                alert(result.message || 'Propriedade atualizada com sucesso!');
+                window.location.reload();
+            } else {
+                alert(result.error || 'Erro ao atualizar propriedade');
+            }
+        } else {
+            // É um novo cadastro - usa a rota de salvar
+            url = "{{ url_for('cadastro_propriedade.salvar_propriedade') }}";
+            method = 'POST';
+            
+            // Enviar como FormData
+            const response = await fetch(url, {
+                method: method,
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Fecha o modal
+                document.getElementById('cadastroModal').querySelector('.btn-close').click();
+                
+                // Pergunta se deseja cadastrar safra
+                if (confirm(result.message + ' Deseja cadastrar uma safra para esta propriedade agora?')) {
+                    cadastrarSafra(result.id_propriedade);
+                } else {
+                    window.location.href = "{{ url_for('cadastro_propriedade.index') }}";
+                }
+            } else {
+                alert(result.error || 'Erro ao salvar propriedade');
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao salvar:', error);
+        alert('Erro ao salvar propriedade');
+    }
+    
+    return false;
+}
+
+// Editar propriedade
+async function editarPropriedade(id) {
+    try {
+        const response = await fetch(`/cadastro_propriedade/propriedade/${id}`);
+        const data = await response.json();
+        
+        if (data.propriedade) {
+            const form = document.getElementById('propriedadeForm');
+            
+            // Adicionar campo oculto para ID da propriedade (importante!)
+            let idField = form.querySelector('input[name="id_propriedade"]');
+            if (!idField) {
+                idField = document.createElement('input');
+                idField.type = 'hidden';
+                idField.name = 'id_propriedade';
+                form.appendChild(idField);
+            }
+            idField.value = id;
+            
+            // Preencher o formulário com os dados
+            Object.keys(data.propriedade).forEach(key => {
+                const input = form.querySelector(`[name="${key}"]`);
+                if (input) {
+                    input.value = data.propriedade[key];
+                }
+            });
+            
+            // Modificar o título do modal para indicar que é uma edição
+            const modalTitle = document.querySelector('#cadastroModal .modal-title');
+            if (modalTitle) {
+                modalTitle.textContent = 'Editar Propriedade';
+            }
+            
+            new bootstrap.Modal(document.getElementById('cadastroModal')).show();
+        }
+    } catch (error) {
+        console.error('Erro ao carregar propriedade:', error);
+        alert('Erro ao carregar dados da propriedade');
+    }
+}
+
+// Desativar propriedade
+async function excluirPropriedade(id) {
+    if (!confirm('ATENÇÃO: Esta ação excluirá permanentemente a propriedade e todas as safras relacionadas. Esta operação não pode ser desfeita. Deseja continuar?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/cadastro_propriedade/excluir/${id}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message);
+            window.location.reload();
+        } else {
+            alert(result.error || 'Erro ao excluir propriedade');
+        }
+    } catch (error) {
+        console.error('Erro ao excluir:', error);
+        alert('Erro ao excluir propriedade. Verifique o console para mais detalhes.');
+    }
+}
+
+// FRONTEND: Funções JavaScript para editar e excluir safra
+
+// Função para editar safra
+async function editarSafra(idSafra) {
+    try {
+        // Carregar os dados da safra
+        const response = await fetch(`/cadastro_propriedade/safra/${idSafra}`);
+        const data = await response.json();
+        
+        if (!data.success || !data.safra) {
+            alert('Erro ao carregar dados da safra.');
+            return;
+        }
+        
+        const safra = data.safra;
+        
+        // Preencher o formulário com os dados da safra
+        const form = document.getElementById('safraForm');
+        
+        // Adicionar campo oculto para o ID da safra se não existir
+        let idSafraField = form.querySelector('input[name="id_safra"]');
+        if (!idSafraField) {
+            idSafraField = document.createElement('input');
+            idSafraField.type = 'hidden';
+            idSafraField.name = 'id_safra';
+            form.appendChild(idSafraField);
+        }
+        
+        // Preencher os campos do formulário
+        idSafraField.value = safra.id_safra;
+        document.getElementById('safra_id_propriedade').value = safra.id_propriedade;
+        form.querySelector('input[name="qtd_produzida_total"]').value = safra.qtd_produzida_total;
+        form.querySelector('input[name="qtd_produzida_t"]').value = safra.qtd_produzida_t;
+        form.querySelector('input[name="tamanho_colido"]').value = safra.tamanho_colido;
+        form.querySelector('input[name="nome_talhao"]').value = safra.nome_talhao;
+        form.querySelector('input[name="ano_safra"]').value = safra.ano_safra;
+        
+        // Alterar o título do modal para indicar que é edição
+        const modalTitle = document.querySelector('#safraModal .modal-title');
+        if (modalTitle) {
+            modalTitle.textContent = 'Editar Safra';
+        }
+        
+        // Alterar o texto do botão
+        const btnSalvar = document.querySelector('#safraForm .btn-primary');
+        if (btnSalvar) {
+            btnSalvar.textContent = 'Atualizar Safra';
+        }
+        
+        // Mostrar o modal
+        new bootstrap.Modal(document.getElementById('safraModal')).show();
+        
+    } catch (error) {
+        console.error('Erro ao carregar safra:', error);
+        alert('Erro ao carregar dados da safra. Verifique o console para mais detalhes.');
+    }
+}
+
+// Função para excluir safra
+async function excluirSafra(idSafra) {
+    if (!confirm('Tem certeza que deseja excluir esta safra? Esta operação não pode ser desfeita.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/cadastro_propriedade/safra/${idSafra}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(result.message || 'Safra excluída com sucesso!');
+            window.location.reload();
+        } else {
+            alert(result.error || 'Erro ao excluir safra');
+        }
+    } catch (error) {
+        console.error('Erro ao excluir safra:', error);
+        alert('Erro ao excluir safra. Verifique o console para mais detalhes.');
+    }
+}
+
+// Atualização da função salvarSafra para lidar com edição
+async function salvarSafra(event) {
+    event.preventDefault();
+    
+    try {
+        const form = event.target;
+        const formData = new FormData(form);
+        const idSafra = formData.get('id_safra');
+        const idPropriedade = formData.get('id_propriedade');
+        
+        // Criando um objeto com os dados do formulário
+        const dadosSafra = {
+            id_propriedade: idPropriedade,
+            qtd_produzida_total: formData.get('qtd_produzida_total'),
+            qtd_produzida_t: formData.get('qtd_produzida_t'),
+            tamanho_colido: formData.get('tamanho_colido'),
+            nome_talhao: formData.get('nome_talhao'),
+            ano_safra: formData.get('ano_safra')
+        };
+        
+        let url, method;
+        
+        if (idSafra) {
+            // É uma edição
+            url = `/cadastro_propriedade/atualizar_safra/${idSafra}`;
+            method = 'PUT';
+            dadosSafra.id_safra = idSafra;
+        } else {
+            // É um novo cadastro
+            url = '/cadastro_propriedade/salvar_safra';
+            method = 'POST';
+        }
+        
+        // Enviando os dados para o servidor
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dadosSafra)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Fecha o modal
+            document.getElementById('safraModal').querySelector('.btn-close').click();
+            
+            // Exibe mensagem de sucesso
+            alert(result.message || (idSafra ? 'Safra atualizada com sucesso!' : 'Safra cadastrada com sucesso!'));
+            
+            // Recarrega a página para atualizar os dados
+            window.location.reload();
+        } else {
+            alert(result.error || 'Erro ao processar safra');
+        }
+    } catch (error) {
+        console.error('Erro ao processar safra:', error);
+        alert('Erro ao processar safra. Verifique o console para mais detalhes.');
+    }
+    
+    return false;
+}
+
+</script>
+{% endblock %}
